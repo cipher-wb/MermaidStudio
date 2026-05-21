@@ -742,6 +742,11 @@
       </div>
       <div class="actions">
         <div class="select-wrap">
+          <select id="fengshen-select" class="tk-select" aria-label="载入封神图表">
+            <option value="">载入封神图表…</option>
+          </select>
+        </div>
+        <div class="select-wrap">
           <select id="example-select" class="tk-select" aria-label="载入示例">
             <option value="">载入示例…</option>
             <option value="flowchart">流程图 · flowchart</option>
@@ -861,6 +866,11 @@
   /*__MERMAID_LIB_INJECTION_POINT__*/
   </script>
 
+  <!-- ========== FENGSHEN DIAGRAMS DATA (injected by build.ps1 from fengshen-diagrams/*.mmd) ========== -->
+  <script>
+  /*__FENGSHEN_DIAGRAMS_INJECTION_POINT__*/
+  </script>
+
   <!-- ========== APP LOGIC ========== -->
   <script>
   (function () {
@@ -896,6 +906,7 @@
     var workspaceEl = $('workspace');
     var toastStack = $('toast-stack');
     var exampleSelect = $('example-select');
+    var fengshenSelect = $('fengshen-select');
     var toggleCodeBtn = $('toggle-code');
     var collapseCodeBtn = $('collapse-code');
     var expandCodeBtn = $('expand-code');
@@ -1731,6 +1742,42 @@
       scheduleRender();
       setTimeout(function () { e.target.value = ''; }, 100);
     });
+
+    // ---------- Fengshen diagrams (loaded from fengshen-diagrams/*.mmd via build.ps1) ----------
+    function getFengshenList() {
+      return (window.FENGSHEN_DIAGRAMS && Array.isArray(window.FENGSHEN_DIAGRAMS)) ? window.FENGSHEN_DIAGRAMS : [];
+    }
+    function populateFengshen() {
+      if (!fengshenSelect) return;
+      while (fengshenSelect.options.length > 1) fengshenSelect.remove(1);
+      var data = getFengshenList();
+      if (data.length === 0) {
+        var opt = document.createElement('option');
+        opt.disabled = true;
+        opt.textContent = '（fengshen-diagrams/ 暂无 .mmd 文件）';
+        fengshenSelect.appendChild(opt);
+        return;
+      }
+      for (var i = 0; i < data.length; i++) {
+        var o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = data[i].name || '(unnamed)';
+        fengshenSelect.appendChild(o);
+      }
+    }
+    fengshenSelect.addEventListener('change', function (e) {
+      var idx = parseInt(e.target.value, 10);
+      if (isNaN(idx)) return;
+      var data = getFengshenList();
+      var item = data[idx];
+      if (!item || !item.code) return;
+      codeEl.value = item.code;
+      saveDraft(); updateGutter();
+      autoFitOnNextRender = true;
+      scheduleRender();
+      setTimeout(function () { e.target.value = ''; }, 100);
+    });
+    populateFengshen();
 
     // ---------- Draft ----------
     var saveTimer = null;

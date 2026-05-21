@@ -6,35 +6,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 一个纯本地的单文件工具：粘贴 Mermaid 代码 → 渲染图。最终产物 `mermaid-studio.html` 通过双击在浏览器中以 `file://` 协议打开运行，完全离线，不依赖任何 CDN 或本地服务器。
 
-## 三个文件的角色
+## 项目文件角色
 
-| 文件 | 角色 | 改不改 |
+| 路径 | 角色 | 改不改 |
 | --- | --- | --- |
-| `template.html` | 唯一源文件。包含全部 HTML / CSS / JS，以及占位符 `/*__MERMAID_LIB_INJECTION_POINT__*/` |  **所有修改在这里做** |
-| `mermaid.min.js` | 从 jsdelivr 下载的 mermaid v10.9.1，本地保留 | **保持原样，不要重新下载或升级**（v11+ 有破坏性 API 变更） |
-| `mermaid-studio.html` | 把上面两个文件注入合成的最终产物，约 3.3 MB | **永不直接编辑**，只通过下方的重建命令重新生成 |
+| `template.html` | 唯一前端源文件。含全部 HTML / CSS / JS + 两个占位符 | **所有 UI / 逻辑修改在这里做** |
+| `mermaid.min.js` | jsdelivr 下载的 mermaid v10.9.1，离线 vendored | **保持原样**，不要重新下载或升级（v11+ 有破坏性 API 变更） |
+| `fengshen-diagrams/*.mmd` | 业务图表，每个文件一张，扫描后注入到下拉菜单 | 用户随时增删改，提交 SVN |
+| `build.ps1` | 唯一的构建入口，把上面三者合成最终产物 | 改这里的逻辑要小心，团队都依赖它 |
+| `mermaid-studio.html` | 自包含 3.3 MB+ 单文件成品（双击运行） | **永不直接编辑**，每次都从 build.ps1 重生成 |
 
-## 工作流：改完 template.html 自动重建
+## 工作流：改完任何上面的源就立刻重建
 
-每次修改 `template.html` 后，立刻执行以下 PowerShell 命令重新生成 `mermaid-studio.html`，不要等用户提示：
+不要等用户提示。每次修改 `template.html` 或 `fengshen-diagrams/*.mmd` 之后，立即跑：
 
 ```powershell
-$enc = New-Object System.Text.UTF8Encoding($false)
-$tmpl = [System.IO.File]::ReadAllText('F:\AI\mermaid解析\template.html', $enc)
-$lib  = [System.IO.File]::ReadAllText('F:\AI\mermaid解析\mermaid.min.js', $enc)
-$final = $tmpl.Replace('/*__MERMAID_LIB_INJECTION_POINT__*/', $lib)
-[System.IO.File]::WriteAllText('F:\AI\mermaid解析\mermaid-studio.html', $final, $enc)
+& 'F:\AI\mermaid解析\build.ps1'
 ```
 
-注意点：
+`build.ps1` 内部做了三件事：
+1. 读 `template.html`、`mermaid.min.js`、`fengshen-diagrams/*.mmd`
+2. 把 mermaid 库注入到 `/*__MERMAID_LIB_INJECTION_POINT__*/`
+3. 把所有 `.mmd` 文件打包成 `window.FENGSHEN_DIAGRAMS = [...]` JSON，注入到 `/*__FENGSHEN_DIAGRAMS_INJECTION_POINT__*/`
+4. 用 `[System.IO.File]::WriteAllText` + `UTF8Encoding($false)` 写出 `mermaid-studio.html`（不带 BOM）
 
-- **必须用 `[System.IO.File]::WriteAllText` + `UTF8Encoding($false)`**。`Out-File` / `Set-Content` 默认写入 UTF-8 with BOM，会污染 HTML 并让某些浏览器把 BOM 当作首字符显示在页面顶部。
-- 占位符 `/*__MERMAID_LIB_INJECTION_POINT__*/` 必须保留在 `template.html` 中（位于 `<script>` 标签内的注释里），它是注入锚点。
-- 用 `String.Replace`（不是正则替换）。mermaid.min.js 含有 `$`、反引号等字符，正则会误伤。
+注意：
+
+- `build.ps1` 用 `$PSScriptRoot` 自定位，可以在任何工作目录下用 `& '<full path>\build.ps1'` 调用。
+- 两个占位符 `/*__MERMAID_LIB_INJECTION_POINT__*/` 与 `/*__FENGSHEN_DIAGRAMS_INJECTION_POINT__*/` 必须保留在 `template.html` 的 `<script>` 标签里，删掉就构建会报错。
+- 占位符替换用 `String.Replace`（字面），不用正则——mermaid.min.js 里含有 `$`、反引号等字符，正则会误伤。
+- `.mmd` 文件首行如果是 `%% title: 自定义名称`，会用这个名字作为下拉显示文案；否则用文件名（去 `.mmd` 后缀）。
+
+## 团队同步（SVN）
+
+仓库会上 SVN。任何人 checkout 后双击 `mermaid-studio.html` 直接可用（它是自包含的）。想加业务图表的人：
+
+1. 在 `fengshen-diagrams/` 里加 `.mmd` 文件
+2. 跑 `.\build.ps1`（在项目根目录）
+3. `svn commit` 把 `.mmd` 文件 **和** 重新生成的 `mermaid-studio.html` 一起提交
+4. 队友 `svn update` 后双击 HTML 就能看到新图表
+
+**不要只提交 `.mmd` 不提交 `mermaid-studio.html`**——队友打开的是 HTML，HTML 才是带图表清单的那份。
 
 ## 路径里有中文
 
 工作目录是 `F:\AI\mermaid解析`，含中文字符。在 PowerShell / Bash 命令里始终用单引号包裹路径（`'F:\AI\mermaid解析\template.html'`）。
+
+## 添加业务图表（fengshen-diagrams/）
+
+下拉菜单"**载入封神图表**"的内容来自 `fengshen-diagrams/*.mmd`。在 file:// 协议下浏览器不能列目录、也不能 fetch 兄弟文件，所以这个清单是构建时静态嵌入的，**必须跑 `build.ps1` 才能让新加的图表出现在下拉里**。
 
 ## 设计系统在哪
 

@@ -34,23 +34,37 @@
 
 ## 项目结构
 
-| 文件 | 角色 |
+| 路径 | 角色 |
 | --- | --- |
-| `template.html` | 唯一源文件，所有修改在这里做 |
+| `template.html` | 唯一前端源文件，所有 UI / 逻辑修改在这里做 |
 | `mermaid.min.js` | 锁定版本 v10.9.1 的 mermaid 库（离线） |
-| `mermaid-studio.html` | 把上面两个合成的最终产物（约 3.3 MB） |
+| `fengshen-diagrams/*.mmd` | 业务图表，每个文件一张，构建时自动汇入下拉菜单 |
+| `build.ps1` | 把上面三类源打包成 `mermaid-studio.html` 的构建脚本 |
+| `mermaid-studio.html` | 最终产物（约 3.3 MB），双击即用 |
 
-修改 `template.html` 后，用以下 PowerShell 命令重新生成 `mermaid-studio.html`：
+修改任何源（`template.html` 或 `fengshen-diagrams/*.mmd`）之后，回到项目根目录运行：
 
 ```powershell
-$enc = New-Object System.Text.UTF8Encoding($false)
-$tmpl = [System.IO.File]::ReadAllText('.\template.html', $enc)
-$lib  = [System.IO.File]::ReadAllText('.\mermaid.min.js', $enc)
-$final = $tmpl.Replace('/*__MERMAID_LIB_INJECTION_POINT__*/', $lib)
-[System.IO.File]::WriteAllText('.\mermaid-studio.html', $final, $enc)
+.\build.ps1
 ```
 
-> 注意：必须用 `[System.IO.File]::WriteAllText` + `UTF8Encoding($false)`（不带 BOM）。`Out-File` / `Set-Content` 会写入带 BOM 的 UTF-8，导致部分浏览器把 BOM 显示成首字符。
+`build.ps1` 用 `$PSScriptRoot` 自定位，**SVN / git checkout 到任何路径都能运行**，不依赖固定目录。
+
+## 添加业务图表
+
+下拉菜单"**载入封神图表**"的内容来自 [`fengshen-diagrams/`](./fengshen-diagrams) 文件夹。
+
+```text
+1. 在 fengshen-diagrams/ 新建一个 .mmd 文件     战斗循环.mmd
+2. (可选) 首行写自定义显示名                    %% title: 战斗循环 · 主流程
+3. 接下来写 Mermaid 代码                        graph TD ...
+4. 在项目根运行 build.ps1                       .\build.ps1
+5. 双击 mermaid-studio.html，下拉里已经有了
+```
+
+详见 [`fengshen-diagrams/README.md`](./fengshen-diagrams/README.md)。
+
+> **为什么需要 build 步骤？** 浏览器在 `file://` 协议下不能列目录、也不能 fetch 兄弟文件（CORS 安全限制）。所以图表清单是构建时**静态嵌入**到 HTML 里的。这换来的好处是：最终 HTML 完全自包含，团队同事拿到 HTML 双击就能看到所有图表，不需要额外文件夹。
 
 详细开发说明见 [`CLAUDE.md`](./CLAUDE.md)。
 
