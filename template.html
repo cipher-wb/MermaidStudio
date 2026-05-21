@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-warm">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mermaid Studio · 图表工坊</title>
+<style>
+  /* ============ TYPE & PALETTE ============ */
+  :root, :root.theme-warm {
+    --bg-base:        #F5F4ED;
+    --bg-paper:       #FAF9F2;
+    --bg-sunken:      #EFEDE3;
+    --bg-deep:        #E8E4D6;
+    --bg-soft-orange: #FDF2EA;
+
+    --ink-1: #2A2620;   /* primary text */
+    --ink-2: #3D3929;
+    --ink-3: #6E6754;
+    --ink-4: #A19B89;
+    --ink-mute: #C9C1A8;
+
+    --accent:        #D97757;   /* Anthropic orange */
+    --accent-hover:  #C76747;
+    --accent-soft:   rgba(217, 119, 87, 0.08);
+    --accent-mid:    rgba(217, 119, 87, 0.22);
+    --accent-strong: rgba(217, 119, 87, 0.45);
+
+    --border:         #E0DBC9;
+    --border-strong:  #CFC8B0;
+    --border-ink:     #B8AF93;
+
+    --danger:  #B85450;
+    --success: #7D9C68;
+    --warning: #D4A056;
+
+    --shadow-xs: 0 1px 1px rgba(61, 57, 41, 0.04);
+    --shadow-sm: 0 1px 2px rgba(61, 57, 41, 0.05);
+    --shadow:    0 1px 2px rgba(61, 57, 41, 0.04), 0 8px 24px -12px rgba(61, 57, 41, 0.12);
+    --shadow-lg: 0 4px 8px rgba(61, 57, 41, 0.05), 0 24px 48px -16px rgba(61, 57, 41, 0.16);
+    --focus-ring: 0 0 0 3px rgba(217, 119, 87, 0.18);
+
+    --font-serif: 'Source Serif Pro', 'Tiempos Text', 'Tiempos Headline', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', Cambria, Georgia, 'Times New Roman', serif;
+    --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    --font-mono:  'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+
+  :root.theme-dim {
+    --bg-base:        #1F1E1C;
+    --bg-paper:       #262624;
+    --bg-sunken:      #1A1917;
+    --bg-deep:        #2F2D2A;
+    --bg-soft-orange: rgba(232, 159, 126, 0.08);
+
+    --ink-1: #F5F4ED;
+    --ink-2: #E5E0CF;
+    --ink-3: #B8B2A0;
+    --ink-4: #807A6A;
+    --ink-mute: #524F47;
+
+    --accent:        #E89F7E;
+    --accent-hover:  #F2B097;
+    --accent-soft:   rgba(232, 159, 126, 0.1);
+    --accent-mid:    rgba(232, 159, 126, 0.24);
+    --accent-strong: rgba(232, 159, 126, 0.48);
+
+    --border:        #3A3733;
+    --border-strong: #4D4943;
+    --border-ink:    #6A655B;
+
+    --danger:  #D77E7A;
+    --success: #9DB387;
+    --warning: #DEB46F;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow:    0 2px 6px rgba(0, 0, 0, 0.32), 0 16px 40px -16px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.35), 0 32px 64px -24px rgba(0, 0, 0, 0.7);
+    --focus-ring: 0 0 0 3px rgba(232, 159, 126, 0.22);
+  }
+
+  /* ============ RESET ============ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--ink-1);
+    background: var(--bg-base);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1, 'ss01';
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ============ PAPER TEXTURE ============ */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 18% 22%, rgba(217, 119, 87, 0.06), transparent 42%),
+      radial-gradient(circle at 82% 78%, rgba(61, 57, 41, 0.04), transparent 50%),
+      radial-gradient(circle at 50% 100%, rgba(125, 156, 104, 0.03), transparent 55%);
+  }
+  :root.theme-dim body::before {
+    background:
+      radial-gradient(circle at 18% 22%, rgba(232, 159, 126, 0.08), transparent 42%),
+      radial-gradient(circle at 82% 78%, rgba(245, 244, 237, 0.025), transparent 55%);
+  }
+
+  /* ============ LAYOUT ============ */
+  .app {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 22px 28px 16px;
+    gap: 18px;
+  }
+  @media (max-width: 900px) {
+    .app { padding: 14px 14px 10px; gap: 12px; }
+  }
+
+  /* ============ TOPBAR ============ */
+  .topbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 4px 4px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark {
+    width: 30px; height: 30px;
+    color: var(--accent);
+    display: block;
+    flex-shrink: 0;
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-1);
+  }
+  .brand-sub {
+    margin: 4px 0 0;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.01em;
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ============ BUTTONS & SELECT ============ */
+  .btn-ghost, .btn-icon, .btn-primary, .btn-soft {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-feature-settings: 'tnum' 1;
+  }
+  .btn-icon { width: 32px; height: 32px; padding: 0; color: var(--ink-3); }
+  .btn-icon svg { width: 16px; height: 16px; stroke-width: 1.7; }
+  .btn-ghost { padding: 6px 12px; }
+  .btn-soft {
+    padding: 6px 12px;
+    background: var(--bg-deep);
+    color: var(--ink-2);
+  }
+  .btn-primary {
+    padding: 7px 16px;
+    background: var(--accent);
+    color: #FFFFFF;
+    border-color: var(--accent);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
+  }
+  .btn-ghost:hover, .btn-icon:hover {
+    background: var(--bg-deep);
+    color: var(--ink-1);
+  }
+  .btn-soft:hover { background: var(--border); }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+  .btn-icon:focus-visible, .btn-ghost:focus-visible, .btn-soft:focus-visible, .btn-primary:focus-visible, select.tk-select:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  .btn-icon.is-active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .select-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .select-wrap::after {
+    content: '';
+    position: absolute;
+    right: 12px; top: 50%;
+    width: 5px; height: 5px;
+    border-right: 1.4px solid var(--ink-3);
+    border-bottom: 1.4px solid var(--ink-3);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+  select.tk-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--ink-1);
+    padding: 7px 30px 7px 12px;
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  select.tk-select:hover { border-color: var(--border-strong); background: var(--bg-paper); }
+  select.tk-select option { background: var(--bg-paper); color: var(--ink-1); }
+  :root.theme-dim select.tk-select option { background: var(--bg-paper); }
+
+  /* ============ WORKSPACE ============ */
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) 6px minmax(360px, 1.5fr);
+    min-height: 0;
+    transition: grid-template-columns .32s cubic-bezier(.4, 0, .2, 1);
+  }
+  .workspace.code-collapsed {
+    grid-template-columns: 0px 0px 1fr;
+  }
+  .workspace.code-collapsed .panel-code,
+  .workspace.code-collapsed .resizer {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    overflow: hidden;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-paper);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    min-width: 0;
+    box-shadow: var(--shadow-sm);
+    transition: opacity .25s ease;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,0,0,0.005), transparent);
+    min-height: 46px;
+  }
+  .panel-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-3);
+    letter-spacing: 0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title::before {
+    content: '§';
+    font-family: var(--font-serif);
+    font-style: normal;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .panel-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .panel-meta .btn-ghost, .panel-meta .btn-soft, .panel-meta .btn-primary {
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+  .panel-meta .btn-icon { width: 28px; height: 28px; }
+  .panel-meta .btn-icon svg { width: 14px; height: 14px; }
+  .panel-meta .separator {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  #code-chars {
+    color: var(--ink-4);
+    font-size: 11.5px;
+    font-family: var(--font-mono);
+    padding: 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ============ EDITOR ============ */
+  .editor {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    min-height: 0;
+    background: var(--bg-paper);
+    position: relative;
+  }
+  .gutter {
+    background: var(--bg-sunken);
+    color: var(--ink-4);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    padding: 16px 8px 16px 4px;
+    text-align: right;
+    user-select: none;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
+    font-feature-settings: 'tnum' 1;
+  }
+  .gutter > div {
+    padding-right: 8px;
+    transition: color .15s ease, background .15s ease;
+  }
+  .gutter > div.error-line {
+    color: var(--danger);
+    background: rgba(184, 84, 80, 0.08);
+    border-right: 2px solid var(--danger);
+    padding-right: 6px;
+    font-weight: 600;
+  }
+  #code {
+    appearance: none;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: var(--ink-1);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.65;
+    padding: 16px 18px;
+    width: 100%;
+    height: 100%;
+    tab-size: 2;
+    -moz-tab-size: 2;
+    caret-color: var(--accent);
+  }
+  #code::placeholder {
+    color: var(--ink-4);
+    font-style: italic;
+    font-family: var(--font-serif);
+  }
+  #code::selection { background: var(--accent-mid); }
+
+  /* ============ RESIZER ============ */
+  .resizer {
+    position: relative;
+    cursor: col-resize;
+  }
+  .resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 32px;
+    background: var(--border);
+    border-radius: 2px;
+    transition: background .2s ease, height .2s ease;
+  }
+  .resizer:hover::after,
+  .resizer.is-dragging::after {
+    background: var(--accent);
+    height: 56px;
+  }
+
+  /* ============ PREVIEW ============ */
+  .panel-preview {
+    position: relative;
+  }
+  .canvas {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, var(--bg-paper) 0%, var(--bg-base) 100%);
+    background-image:
+      radial-gradient(circle at 50% 50%, transparent 70%, rgba(217, 119, 87, 0.025) 100%),
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 100% 100%, 32px 32px, 32px 32px;
+    background-position: 0 0, -1px -1px, -1px -1px;
+    cursor: grab;
+  }
+  .canvas.is-dragging { cursor: grabbing; }
+  :root.theme-dim .canvas {
+    background-image:
+      radial-gradient(circle at 50% 50%, transparent 70%, rgba(232, 159, 126, 0.04) 100%),
+      linear-gradient(var(--bg-deep) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-deep) 1px, transparent 1px);
+  }
+  .canvas-inner {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform-origin: center center;
+    transition: transform .15s cubic-bezier(.2, .7, .2, 1);
+    will-change: transform;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .canvas-inner.no-transition { transition: none; }
+  .diagram {
+    background: transparent;
+    color: var(--ink-1);
+    user-select: none;
+    line-height: 1;
+  }
+  .diagram svg {
+    max-width: none !important;
+    background: transparent;
+    display: block;
+    filter: drop-shadow(0 4px 18px rgba(61, 57, 41, 0.1));
+  }
+  :root.theme-dim .diagram svg {
+    filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.35));
+  }
+  /* Mermaid text overrides (keep diagram text consistent with our serif/sans choice) */
+  .diagram text,
+  .diagram .nodeLabel,
+  .diagram .edgeLabel,
+  .diagram .label foreignObject div {
+    font-family: var(--font-sans) !important;
+  }
+
+  /* Expand-code floating tab */
+  .expand-tab {
+    position: absolute;
+    top: 50%;
+    left: -1px;
+    transform: translateY(-50%);
+    z-index: 5;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 6px;
+    background: var(--bg-paper);
+    border: 1px solid var(--border);
+    border-left: 0;
+    border-radius: 0 10px 10px 0;
+    color: var(--ink-3);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: color .15s ease, background .15s ease, padding-right .2s ease;
+    user-select: none;
+  }
+  .expand-tab:hover {
+    color: var(--accent);
+    background: var(--bg-paper);
+    padding-right: 10px;
+  }
+  .expand-tab svg { width: 14px; height: 14px; stroke-width: 1.7; }
+  .expand-tab-label {
+    writing-mode: vertical-rl;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+  .workspace.code-collapsed .expand-tab { display: flex; }
+
+  /* ============ OVERLAY PANES ============ */
+  .overlay-pane {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    pointer-events: none;
+  }
+  .overlay-pane.hidden { display: none; }
+  .pane-mark {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    line-height: 1;
+    color: var(--accent);
+    margin-bottom: 18px;
+    font-weight: 400;
+  }
+  .empty-pane p {
+    margin: 0;
+    color: var(--ink-3);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: 380px;
+  }
+  .error-pane .pane-mark { color: var(--danger); }
+  .error-title {
+    margin: 0 0 6px;
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .error-message {
+    margin: 0 0 14px;
+    color: var(--ink-3);
+    font-size: 13.5px;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+  .error-detail {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--danger);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin: 0 0 14px;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.65;
+    max-width: 520px;
+    max-height: 140px;
+    overflow: auto;
+    text-align: left;
+    pointer-events: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .error-hint {
+    margin: 0;
+    color: var(--ink-3);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+    max-width: 480px;
+    line-height: 1.7;
+  }
+
+  /* ============ ZOOM CLUSTER ============ */
+  .zoom-cluster {
+    display: inline-flex;
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .zoom-cluster .btn-icon {
+    border: 0;
+    border-radius: 0;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    color: var(--ink-3);
+  }
+  .zoom-cluster .btn-icon:hover { background: var(--bg-deep); color: var(--ink-1); }
+  #zoom-label {
+    min-width: 46px;
+    text-align: center;
+    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-feature-settings: 'tnum' 1;
+    color: var(--ink-3);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 0 8px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+  }
+
+  /* ============ STATUS BAR ============ */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 4px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    font-feature-settings: 'tnum' 1;
+  }
+  .status-left, .status-right { display: flex; align-items: center; gap: 14px; }
+  .status-item { display: inline-flex; align-items: center; gap: 6px; }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ink-4);
+    transition: background .2s ease;
+  }
+  .status-dot.ok { background: var(--success); }
+  .status-dot.err { background: var(--danger); }
+  .status-dot.pending { background: var(--warning); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+  .status-divider {
+    width: 16px; height: 1px;
+    background: var(--border-strong);
+  }
+
+  /* ============ TOAST ============ */
+  .toast-stack {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .toast {
+    padding: 8px 16px;
+    background: var(--ink-1);
+    color: var(--bg-paper);
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .22s ease, transform .22s ease;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.kind-success::before { content: '✓ '; color: var(--success); margin-right: 2px; }
+  .toast.kind-error::before { content: '× '; color: var(--danger); margin-right: 2px; }
+
+  /* ============ SCROLLBAR ============ */
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+  * { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 900px) {
+    .workspace {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(180px, 1fr) 6px minmax(220px, 1.4fr);
+    }
+    .workspace.code-collapsed {
+      grid-template-columns: 1fr;
+      grid-template-rows: 0px 0px 1fr;
+    }
+    .resizer { cursor: row-resize; }
+    .resizer::after { width: 36px; height: 2px; }
+    .resizer:hover::after, .resizer.is-dragging::after { width: 56px; height: 2px; }
+    .brand-sub { display: none; }
+    .brand-title { font-size: 18px; }
+    .expand-tab {
+      writing-mode: initial;
+      top: -1px; left: 50%;
+      transform: translateX(-50%) translateY(0);
+      flex-direction: row;
+      padding: 6px 14px;
+      border-radius: 0 0 10px 10px;
+      border: 1px solid var(--border);
+      border-top: 0;
+    }
+    .expand-tab-label { writing-mode: initial; }
+  }
+
+  /* ============ MOTION & A11Y ============ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- ========== TOPBAR ========== -->
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path fill="currentColor" d="M16 1.5 L18.7 12.4 L29.7 14.6 L21 21.5 L23.2 32 L16 25.3 L8.8 32 L11 21.5 L2.3 14.6 L13.3 12.4 Z"/>
+        </svg>
+        <div class="brand-text">
+          <h1 class="brand-title">Mermaid Studio</h1>
+          <p class="brand-sub">a quiet place to draw diagrams</p>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="select-wrap">
+          <select id="example-select" class="tk-select" aria-label="载入示例">
+            <option value="">载入示例…</option>
+            <option value="flowchart">流程图 · flowchart</option>
+            <option value="sequence">序列图 · sequence</option>
+            <option value="class">类图 · class</option>
+            <option value="state">状态图 · state</option>
+            <option value="er">ER 图 · entity</option>
+            <option value="gantt">甘特图 · gantt</option>
+            <option value="pie">饼图 · pie</option>
+            <option value="journey">用户旅程 · journey</option>
+            <option value="gitgraph">Git 图 · gitgraph</option>
+            <option value="mindmap">思维导图 · mindmap</option>
+            <option value="timeline">时间线 · timeline</option>
+            <option value="quadrant">象限图 · quadrant</option>
+          </select>
+        </div>
+        <button class="btn-icon" id="toggle-code" title="收起 / 展开代码区 (Ctrl+B)" aria-label="收起代码区">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+        </button>
+        <button class="btn-icon" id="theme-toggle" title="切换深浅" aria-label="切换主题">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="btn-icon" id="reset-layout" title="重置缩放与平移" aria-label="重置视图">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ========== WORKSPACE ========== -->
+    <main class="workspace" id="workspace">
+      <!-- code panel -->
+      <section class="panel panel-code" aria-label="代码">
+        <header class="panel-head">
+          <span class="panel-title">Code</span>
+          <div class="panel-meta">
+            <span id="code-chars">0 行 · 0 字符</span>
+            <span class="separator" aria-hidden="true"></span>
+            <button class="btn-ghost" id="copy-code" title="复制代码">复制</button>
+            <button class="btn-ghost" id="clear-code" title="清空代码">清空</button>
+            <button class="btn-icon" id="collapse-code" title="收起代码区 (Ctrl+B)" aria-label="收起">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="editor">
+          <div class="gutter" id="gutter" aria-hidden="true"></div>
+          <textarea id="code" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="// 在这里粘贴或输入 Mermaid 代码&#10;graph TD&#10;  A[开始] --> B[结束]"></textarea>
+        </div>
+      </section>
+
+      <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" tabindex="0"></div>
+
+      <!-- preview panel -->
+      <section class="panel panel-preview" aria-label="预览">
+        <button class="expand-tab" id="expand-code" title="展开代码区 (Ctrl+B)" aria-label="展开代码区">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+          <span class="expand-tab-label">Code</span>
+        </button>
+        <header class="panel-head">
+          <span class="panel-title">Preview</span>
+          <div class="panel-meta">
+            <div class="zoom-cluster">
+              <button class="btn-icon" id="zoom-out" title="缩小 (Ctrl + -)" aria-label="缩小">−</button>
+              <span id="zoom-label">100%</span>
+              <button class="btn-icon" id="zoom-in" title="放大 (Ctrl + +)" aria-label="放大">+</button>
+            </div>
+            <button class="btn-icon" id="zoom-fit" title="适应窗口" aria-label="适应窗口">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/></svg>
+            </button>
+            <span class="separator" aria-hidden="true"></span>
+            <button class="btn-ghost" id="copy-img" title="复制图片到剪贴板">复制图片</button>
+            <button class="btn-soft" id="export-svg" title="导出为 SVG">SVG</button>
+            <button class="btn-primary" id="export-png" title="导出为 PNG">PNG</button>
+          </div>
+        </header>
+        <div class="canvas" id="canvas">
+          <div class="canvas-inner" id="canvas-inner">
+            <div class="diagram" id="diagram"></div>
+          </div>
+          <div class="overlay-pane empty-pane" id="empty-pane">
+            <div class="pane-mark">❋</div>
+            <p>在左侧粘贴 Mermaid 代码<br>这里会安静地为你画出图来</p>
+          </div>
+          <div class="overlay-pane error-pane hidden" id="error-pane">
+            <div class="pane-mark">!</div>
+            <h3 class="error-title">渲染未完成</h3>
+            <p class="error-message" id="error-message">检测到语法问题</p>
+            <pre class="error-detail" id="error-detail"></pre>
+            <p class="error-hint" id="error-hint"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ========== STATUS BAR ========== -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <div class="status-item">
+          <span class="status-dot ok" id="status-dot"></span>
+          <span id="status-text">就绪</span>
+        </div>
+        <span class="status-divider" aria-hidden="true"></span>
+        <span class="status-item" id="autosave-tag">草稿已保存</span>
+      </div>
+      <div class="status-right">
+        <span class="status-item">Mermaid v10.9.1</span>
+        <span class="status-divider" aria-hidden="true"></span>
+        <span class="status-item" id="status-time">--:--:--</span>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+  <!-- ========== MERMAID LIBRARY (inlined for fully-offline use) ========== -->
+  <script>
+  /*__MERMAID_LIB_INJECTION_POINT__*/
+  </script>
+
+  <!-- ========== APP LOGIC ========== -->
+  <script>
+  (function () {
+    'use strict';
+
+    window.addEventListener('error', function (e) {
+      try { console.warn('[MS]', e.message); } catch (_) {}
+      e.preventDefault && e.preventDefault();
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      try { console.warn('[MS] rejection', e.reason && e.reason.message ? e.reason.message : e.reason); } catch (_) {}
+      e.preventDefault && e.preventDefault();
+    });
+
+    var $ = function (id) { return document.getElementById(id); };
+    var codeEl = $('code');
+    var gutterEl = $('gutter');
+    var diagramEl = $('diagram');
+    var canvasEl = $('canvas');
+    var canvasInnerEl = $('canvas-inner');
+    var emptyPane = $('empty-pane');
+    var errorPane = $('error-pane');
+    var errorMessageEl = $('error-message');
+    var errorDetailEl = $('error-detail');
+    var errorHintEl = $('error-hint');
+    var zoomLabel = $('zoom-label');
+    var codeCharsEl = $('code-chars');
+    var statusDot = $('status-dot');
+    var statusText = $('status-text');
+    var statusTime = $('status-time');
+    var autosaveTag = $('autosave-tag');
+    var resizerEl = $('resizer');
+    var workspaceEl = $('workspace');
+    var toastStack = $('toast-stack');
+    var exampleSelect = $('example-select');
+    var toggleCodeBtn = $('toggle-code');
+    var collapseCodeBtn = $('collapse-code');
+    var expandCodeBtn = $('expand-code');
+
+    var STORAGE = {
+      DRAFT: 'mermaid-studio.draft.v1',
+      THEME: 'mermaid-studio.theme.v2',
+      LAYOUT: 'mermaid-studio.layout.v1',
+      COLLAPSED: 'mermaid-studio.collapsed.v1'
+    };
+
+    function safeGet(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
+    function safeSet(key, val) { try { localStorage.setItem(key, val); return true; } catch (_) { return false; } }
+
+    function toast(msg, kind) {
+      var node = document.createElement('div');
+      node.className = 'toast' + (kind ? ' kind-' + kind : '');
+      node.textContent = msg;
+      toastStack.appendChild(node);
+      requestAnimationFrame(function () { node.classList.add('show'); });
+      setTimeout(function () {
+        node.classList.remove('show');
+        setTimeout(function () { try { toastStack.removeChild(node); } catch (_) {} }, 220);
+      }, 1900);
+    }
+
+    // ---------- Examples ----------
+    var EXAMPLES = {
+      flowchart:
+'graph TD\n' +
+'    A[用户访问] --> B{是否登录?}\n' +
+'    B -- 已登录 --> C[展示工作台]\n' +
+'    B -- 未登录 --> D[跳转登录页]\n' +
+'    D --> E[输入凭证]\n' +
+'    E --> F{校验通过?}\n' +
+'    F -- 是 --> C\n' +
+'    F -- 否 --> D\n' +
+'    C --> G[完成]',
+
+      sequence:
+'sequenceDiagram\n' +
+'    autonumber\n' +
+'    participant 用户\n' +
+'    participant 前端\n' +
+'    participant 后端\n' +
+'    participant 数据库\n' +
+'\n' +
+'    用户->>前端: 提交登录表单\n' +
+'    前端->>后端: POST /api/login\n' +
+'    后端->>数据库: 查询用户\n' +
+'    数据库-->>后端: 返回用户记录\n' +
+'    后端->>后端: 校验密码哈希\n' +
+'    后端-->>前端: 返回 Token\n' +
+'    前端-->>用户: 跳转到工作台',
+
+      class:
+'classDiagram\n' +
+'    class Animal {\n' +
+'        +String name\n' +
+'        +int age\n' +
+'        +eat()\n' +
+'        +sleep()\n' +
+'    }\n' +
+'    class Dog {\n' +
+'        +String breed\n' +
+'        +bark()\n' +
+'    }\n' +
+'    class Cat {\n' +
+'        +String color\n' +
+'        +meow()\n' +
+'    }\n' +
+'    Animal <|-- Dog\n' +
+'    Animal <|-- Cat',
+
+      state:
+'stateDiagram-v2\n' +
+'    [*] --> 待支付\n' +
+'    待支付 --> 已支付: 用户付款\n' +
+'    待支付 --> 已取消: 超时关闭\n' +
+'    已支付 --> 已发货: 商家发货\n' +
+'    已发货 --> 已收货: 用户确认\n' +
+'    已收货 --> [*]\n' +
+'    已取消 --> [*]',
+
+      er:
+'erDiagram\n' +
+'    USER ||--o{ ORDER : places\n' +
+'    ORDER ||--|{ LINE_ITEM : contains\n' +
+'    PRODUCT ||--o{ LINE_ITEM : appears_in\n' +
+'    USER {\n' +
+'        int id PK\n' +
+'        string name\n' +
+'        string email\n' +
+'    }\n' +
+'    ORDER {\n' +
+'        int id PK\n' +
+'        datetime created_at\n' +
+'        decimal total\n' +
+'    }',
+
+      gantt:
+'gantt\n' +
+'    title 项目排期\n' +
+'    dateFormat YYYY-MM-DD\n' +
+'    section 设计\n' +
+'    需求评审 :a1, 2026-05-01, 5d\n' +
+'    UI 设计  :a2, after a1, 10d\n' +
+'    section 开发\n' +
+'    前端开发 :b1, after a2, 14d\n' +
+'    后端开发 :b2, after a2, 14d\n' +
+'    section 测试\n' +
+'    联调测试 :c1, after b1, 5d\n' +
+'    上线发布 :milestone, after c1, 0d',
+
+      pie:
+'pie showData title 用户来源分布\n' +
+'    "搜索引擎" : 42\n' +
+'    "社交媒体" : 28\n' +
+'    "直接访问" : 17\n' +
+'    "外部链接" : 8\n' +
+'    "其他" : 5',
+
+      journey:
+'journey\n' +
+'    title 用户购物旅程\n' +
+'    section 浏览\n' +
+'      访问首页: 5: 用户\n' +
+'      浏览商品: 4: 用户\n' +
+'      查看详情: 5: 用户\n' +
+'    section 购买\n' +
+'      加入购物车: 4: 用户\n' +
+'      下单支付: 3: 用户, 系统\n' +
+'    section 收货\n' +
+'      等待发货: 2: 用户\n' +
+'      收到商品: 5: 用户',
+
+      gitgraph:
+'gitGraph\n' +
+'    commit id: "init"\n' +
+'    commit id: "v0.1"\n' +
+'    branch develop\n' +
+'    checkout develop\n' +
+'    commit\n' +
+'    commit\n' +
+'    checkout main\n' +
+'    merge develop\n' +
+'    branch feature\n' +
+'    checkout feature\n' +
+'    commit\n' +
+'    checkout main\n' +
+'    merge feature',
+
+      mindmap:
+'mindmap\n' +
+'  root((Mermaid))\n' +
+'    流程图\n' +
+'      graph TD\n' +
+'      graph LR\n' +
+'    序列图\n' +
+'      sequenceDiagram\n' +
+'    类图\n' +
+'      classDiagram\n' +
+'    状态图\n' +
+'      stateDiagram-v2\n' +
+'    其他\n' +
+'      gantt\n' +
+'      pie\n' +
+'      erDiagram',
+
+      timeline:
+'timeline\n' +
+'    title 产品发展时间线\n' +
+'    2023 : 立项 : 团队组建\n' +
+'    2024 : 内测版本 : 首批用户\n' +
+'    2025 : 公测发布 : 日活破万\n' +
+'    2026 : 商业化 : 营收稳定',
+
+      quadrant:
+'quadrantChart\n' +
+'    title 项目优先级矩阵\n' +
+'    x-axis 紧急程度 低 --> 高\n' +
+'    y-axis 重要程度 低 --> 高\n' +
+'    quadrant-1 重要且紧急\n' +
+'    quadrant-2 重要不紧急\n' +
+'    quadrant-3 不重要不紧急\n' +
+'    quadrant-4 紧急不重要\n' +
+'    "Bug 修复": [0.85, 0.7]\n' +
+'    "性能优化": [0.3, 0.8]\n' +
+'    "文档更新": [0.2, 0.4]\n' +
+'    "客服回复": [0.9, 0.3]'
+    };
+
+    // ---------- Mermaid config (Anthropic warm palette) ----------
+    function buildMermaidConfig() {
+      var isDim = document.documentElement.classList.contains('theme-dim');
+      var base = {
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: 'base',
+        fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+        flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis', padding: 18 },
+        sequence: { useMaxWidth: false, mirrorActors: false, showSequenceNumbers: false, actorMargin: 60 },
+        gantt: { useMaxWidth: false, leftPadding: 80 },
+        er: { useMaxWidth: false },
+        journey: { useMaxWidth: false },
+        mindmap: { useMaxWidth: false, padding: 14 }
+      };
+
+      if (isDim) {
+        base.themeVariables = {
+          background: 'transparent',
+          primaryColor: '#2F2D2A',
+          primaryTextColor: '#F5F4ED',
+          primaryBorderColor: '#E89F7E',
+          secondaryColor: '#3A3733',
+          tertiaryColor: '#1F1E1C',
+          mainBkg: '#2F2D2A',
+          secondBkg: '#3A3733',
+          tertiaryBkg: '#1F1E1C',
+          lineColor: '#B8B2A0',
+          textColor: '#F5F4ED',
+          nodeBorder: '#E89F7E',
+          edgeLabelBackground: '#262624',
+          clusterBkg: 'rgba(232,159,126,0.1)',
+          clusterBorder: 'rgba(232,159,126,0.45)',
+          titleColor: '#F5F4ED',
+          actorBkg: '#3A3733',
+          actorBorder: '#E89F7E',
+          actorTextColor: '#F5F4ED',
+          actorLineColor: '#B8B2A0',
+          signalColor: '#F5F4ED',
+          signalTextColor: '#F5F4ED',
+          labelBoxBkgColor: '#3A3733',
+          labelBoxBorderColor: '#E89F7E',
+          labelTextColor: '#F5F4ED',
+          loopTextColor: '#F5F4ED',
+          noteBkgColor: '#4A3F33',
+          noteBorderColor: '#E89F7E',
+          noteTextColor: '#F5F4ED',
+          activationBkgColor: '#E89F7E',
+          activationBorderColor: '#E89F7E',
+          sectionBkgColor: 'rgba(232,159,126,0.14)',
+          altSectionBkgColor: 'rgba(157,179,135,0.1)',
+          sectionBkgColor2: 'rgba(232,159,126,0.2)',
+          taskBkgColor: '#E89F7E',
+          taskTextColor: '#262624',
+          taskTextLightColor: '#262624',
+          taskTextDarkColor: '#F5F4ED',
+          taskTextOutsideColor: '#F5F4ED',
+          taskBorderColor: '#E89F7E',
+          activeTaskBkgColor: '#F2B097',
+          activeTaskBorderColor: '#F5F4ED',
+          gridColor: 'rgba(245,244,237,0.1)',
+          doneTaskBkgColor: 'rgba(184,178,160,0.5)',
+          doneTaskBorderColor: '#B8B2A0',
+          critBkgColor: '#D77E7A',
+          critBorderColor: '#D77E7A',
+          todayLineColor: '#E89F7E',
+          pie1: '#E89F7E', pie2: '#9DB387', pie3: '#DEB46F', pie4: '#A98BC8',
+          pie5: '#7AAFBA', pie6: '#D77E7A', pie7: '#C9B894', pie8: '#8FA59E',
+          pie9: '#BB94A7', pie10: '#E8B86F', pie11: '#9C8FBA', pie12: '#B5C99A',
+          pieTitleTextColor: '#F5F4ED',
+          pieSectionTextColor: '#262624',
+          pieLegendTextColor: '#F5F4ED',
+          pieStrokeColor: '#262624',
+          pieOuterStrokeColor: 'transparent',
+          pieOuterStrokeWidth: '0',
+          git0: '#E89F7E', git1: '#9DB387', git2: '#A98BC8', git3: '#DEB46F',
+          gitBranchLabel0: '#262624', gitBranchLabel1: '#262624',
+          gitInv0: '#262624',
+          commitLabelColor: '#F5F4ED',
+          commitLabelBackground: 'transparent',
+          fillType0: 'rgba(232,159,126,0.3)',
+          fillType1: 'rgba(157,179,135,0.3)',
+          fillType2: 'rgba(222,180,111,0.3)',
+          fillType3: 'rgba(169,139,200,0.3)',
+          fillType4: 'rgba(122,175,186,0.3)',
+          fillType5: 'rgba(215,126,122,0.3)'
+        };
+      } else {
+        base.themeVariables = {
+          background: 'transparent',
+          primaryColor: '#FAF9F2',
+          primaryTextColor: '#2A2620',
+          primaryBorderColor: '#2A2620',
+          secondaryColor: '#EFEDE3',
+          tertiaryColor: '#E8E4D6',
+          mainBkg: '#FAF9F2',
+          secondBkg: '#EFEDE3',
+          tertiaryBkg: '#E8E4D6',
+          lineColor: '#6E6754',
+          textColor: '#2A2620',
+          nodeBorder: '#2A2620',
+          edgeLabelBackground: '#F5F4ED',
+          clusterBkg: 'rgba(217,119,87,0.06)',
+          clusterBorder: 'rgba(217,119,87,0.4)',
+          titleColor: '#2A2620',
+          actorBkg: '#FAF9F2',
+          actorBorder: '#2A2620',
+          actorTextColor: '#2A2620',
+          actorLineColor: '#6E6754',
+          signalColor: '#2A2620',
+          signalTextColor: '#2A2620',
+          labelBoxBkgColor: '#FAF9F2',
+          labelBoxBorderColor: '#D97757',
+          labelTextColor: '#2A2620',
+          loopTextColor: '#2A2620',
+          noteBkgColor: '#FDF2EA',
+          noteBorderColor: '#D97757',
+          noteTextColor: '#2A2620',
+          activationBkgColor: '#D97757',
+          activationBorderColor: '#D97757',
+          sectionBkgColor: 'rgba(217,119,87,0.1)',
+          altSectionBkgColor: 'rgba(125,156,104,0.08)',
+          sectionBkgColor2: 'rgba(217,119,87,0.18)',
+          taskBkgColor: '#D97757',
+          taskTextColor: '#FFFFFF',
+          taskTextLightColor: '#FFFFFF',
+          taskTextDarkColor: '#2A2620',
+          taskTextOutsideColor: '#2A2620',
+          taskBorderColor: '#2A2620',
+          activeTaskBkgColor: '#C76747',
+          activeTaskBorderColor: '#2A2620',
+          gridColor: 'rgba(42,38,32,0.1)',
+          doneTaskBkgColor: 'rgba(110,103,84,0.4)',
+          doneTaskBorderColor: '#6E6754',
+          critBkgColor: '#B85450',
+          critBorderColor: '#B85450',
+          todayLineColor: '#D97757',
+          pie1: '#D97757', pie2: '#7D9C68', pie3: '#A8946F', pie4: '#8B6F9C',
+          pie5: '#5D8A8F', pie6: '#B85450', pie7: '#9C8568', pie8: '#6F8773',
+          pie9: '#9C6F8B', pie10: '#D4A056', pie11: '#7C7BAA', pie12: '#8FA565',
+          pieTitleTextColor: '#2A2620',
+          pieSectionTextColor: '#FFFFFF',
+          pieLegendTextColor: '#2A2620',
+          pieStrokeColor: '#F5F4ED',
+          pieOuterStrokeColor: 'transparent',
+          pieOuterStrokeWidth: '0',
+          git0: '#D97757', git1: '#7D9C68', git2: '#8B6F9C', git3: '#D4A056',
+          gitBranchLabel0: '#FFFFFF', gitBranchLabel1: '#FFFFFF',
+          gitInv0: '#FFFFFF',
+          commitLabelColor: '#2A2620',
+          commitLabelBackground: 'transparent',
+          fillType0: 'rgba(217,119,87,0.25)',
+          fillType1: 'rgba(125,156,104,0.25)',
+          fillType2: 'rgba(212,160,86,0.25)',
+          fillType3: 'rgba(139,111,156,0.25)',
+          fillType4: 'rgba(93,138,143,0.25)',
+          fillType5: 'rgba(184,84,80,0.25)'
+        };
+      }
+      return base;
+    }
+
+    function initMermaid() {
+      if (!window.mermaid) return false;
+      try {
+        window.mermaid.initialize(buildMermaidConfig());
+        return true;
+      } catch (e) {
+        console.warn('[MS] mermaid init failed', e);
+        return false;
+      }
+    }
+
+    // ---------- Status ----------
+    function setStatus(kind, text) {
+      statusDot.classList.remove('ok', 'err', 'pending');
+      if (kind) statusDot.classList.add(kind);
+      statusText.textContent = text;
+    }
+    function tickClock() {
+      var d = new Date();
+      var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+      statusTime.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+    setInterval(tickClock, 1000);
+    tickClock();
+
+    // ---------- Gutter ----------
+    function updateGutter(activeErrorLine) {
+      var value = codeEl.value || '';
+      var lines = value.split('\n').length || 1;
+      var html = '';
+      for (var i = 1; i <= lines; i++) {
+        html += '<div' + (i === activeErrorLine ? ' class="error-line"' : '') + '>' + i + '</div>';
+      }
+      gutterEl.innerHTML = html;
+      gutterEl.scrollTop = codeEl.scrollTop;
+      codeCharsEl.textContent = lines + ' 行 · ' + value.length + ' 字符';
+    }
+    codeEl.addEventListener('scroll', function () { gutterEl.scrollTop = codeEl.scrollTop; });
+    codeEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var start = codeEl.selectionStart;
+        var end = codeEl.selectionEnd;
+        codeEl.value = codeEl.value.slice(0, start) + '  ' + codeEl.value.slice(end);
+        codeEl.selectionStart = codeEl.selectionEnd = start + 2;
+        scheduleRender();
+        updateGutter();
+      }
+    });
+
+    // ---------- Render ----------
+    var renderTimer = null;
+    var renderSeq = 0;
+    var autoFitOnNextRender = true;
+
+    function scheduleRender() {
+      if (renderTimer) clearTimeout(renderTimer);
+      setStatus('pending', '渲染中…');
+      renderTimer = setTimeout(function () { render(codeEl.value); }, 320);
+    }
+
+    function cleanupOrphans() {
+      try {
+        var nodes = document.querySelectorAll('body > div[id^="dmermaid"], body > div[id^="dm-mermaid"], body > div[id^="d-m-"]');
+        for (var i = 0; i < nodes.length; i++) {
+          if (!nodes[i].closest('#diagram')) {
+            try { nodes[i].parentNode.removeChild(nodes[i]); } catch (_) {}
+          }
+        }
+      } catch (_) {}
+    }
+
+    function showEmpty() {
+      diagramEl.innerHTML = '';
+      emptyPane.classList.remove('hidden');
+      errorPane.classList.add('hidden');
+      setStatus('', '就绪');
+      updateGutter();
+    }
+
+    function showError(err) {
+      var msg = (err && err.message) || String(err || '未知错误');
+      var lineMatch = /[Ll]ine\s+(\d+)/.exec(msg);
+      var lineNo = lineMatch ? parseInt(lineMatch[1], 10) : null;
+      errorMessageEl.textContent = lineNo ? '第 ' + lineNo + ' 行附近的语法有点问题' : '解析或渲染时遇到了麻烦';
+      errorDetailEl.textContent = msg.replace(/\s+$/g, '').slice(0, 800);
+      var hint = '';
+      if (/Parse error/i.test(msg)) {
+        hint = '可以检查箭头方向（--> / -.- / ==>）、引号闭合、节点 ID 是否合法、是否有非法字符。';
+      } else if (/Expecting/i.test(msg)) {
+        hint = '当前位置出现了未预期的符号，可能是缩进、冒号或括号的问题。';
+      } else if (/No diagram type detected/i.test(msg)) {
+        hint = '第一行需要声明图表类型，比如 graph TD、sequenceDiagram、classDiagram 等。';
+      } else {
+        hint = '可以从顶部「载入示例」开始一个最小可用的图，再对照修改。';
+      }
+      errorHintEl.textContent = hint;
+      diagramEl.innerHTML = '';
+      emptyPane.classList.add('hidden');
+      errorPane.classList.remove('hidden');
+      setStatus('err', '语法错误');
+      updateGutter(lineNo);
+    }
+
+    function showRendered() {
+      emptyPane.classList.add('hidden');
+      errorPane.classList.add('hidden');
+      setStatus('ok', '渲染成功');
+      autosaveTag.textContent = '草稿已保存';
+      updateGutter();
+    }
+
+    function render(code) {
+      var src = (code || '').replace(/\s+$/g, '');
+      if (!src) { showEmpty(); return; }
+      if (!window.mermaid) {
+        showError(new Error('Mermaid 库未加载，请检查文件是否完整。'));
+        return;
+      }
+      var thisSeq = ++renderSeq;
+      var id = 'm-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+
+      var parsePromise;
+      try {
+        parsePromise = Promise.resolve(window.mermaid.parse(src, { suppressErrors: false }));
+      } catch (syncErr) {
+        parsePromise = Promise.reject(syncErr);
+      }
+
+      parsePromise
+        .then(function () { return window.mermaid.render(id, src); })
+        .then(function (result) {
+          if (thisSeq !== renderSeq) return;
+          var svg = result && (result.svg || result);
+          diagramEl.innerHTML = svg || '';
+          var svgEl = diagramEl.querySelector('svg');
+          if (svgEl) { svgEl.style.maxWidth = 'none'; }
+          if (result && typeof result.bindFunctions === 'function') {
+            try { result.bindFunctions(diagramEl); } catch (_) {}
+          }
+          cleanupOrphans();
+          showRendered();
+          if (autoFitOnNextRender) {
+            autoFitOnNextRender = false;
+            fitToView(true);
+          }
+        })
+        .catch(function (err) {
+          if (thisSeq !== renderSeq) return;
+          cleanupOrphans();
+          showError(err);
+        });
+    }
+
+    // ---------- Zoom & Pan ----------
+    var scale = 1, tx = 0, ty = 0;
+    function applyTransform(animate) {
+      if (!animate) canvasInnerEl.classList.add('no-transition');
+      canvasInnerEl.style.transform = 'translate(-50%, -50%) translate(' + tx + 'px, ' + ty + 'px) scale(' + scale + ')';
+      zoomLabel.textContent = Math.round(scale * 100) + '%';
+      if (!animate) {
+        requestAnimationFrame(function () { canvasInnerEl.classList.remove('no-transition'); });
+      }
+    }
+    function fitToView(reset) {
+      var svg = diagramEl.querySelector('svg');
+      if (!svg) { scale = 1; tx = 0; ty = 0; applyTransform(true); return; }
+      var canvasBox = canvasEl.getBoundingClientRect();
+      var diagBox = diagramEl.getBoundingClientRect();
+      var w = diagBox.width / scale;
+      var h = diagBox.height / scale;
+      if (w <= 0 || h <= 0) return;
+      var pad = 56;
+      var sx = (canvasBox.width - pad * 2) / w;
+      var sy = (canvasBox.height - pad * 2) / h;
+      var newScale = Math.min(sx, sy);
+      newScale = Math.max(0.2, Math.min(3, newScale));
+      if (reset || newScale < 1) scale = newScale; else scale = 1;
+      tx = 0; ty = 0;
+      applyTransform(true);
+    }
+    canvasEl.addEventListener('wheel', function (e) {
+      if (!diagramEl.querySelector('svg')) return;
+      e.preventDefault();
+      var delta = -e.deltaY * 0.0015;
+      var next = scale * (1 + delta);
+      next = Math.max(0.2, Math.min(6, next));
+      var rect = canvasEl.getBoundingClientRect();
+      var cx = e.clientX - rect.left - rect.width / 2;
+      var cy = e.clientY - rect.top - rect.height / 2;
+      var ratio = next / scale;
+      tx = cx - (cx - tx) * ratio;
+      ty = cy - (cy - ty) * ratio;
+      scale = next;
+      applyTransform(false);
+    }, { passive: false });
+
+    var isPanning = false;
+    var panStart = { x: 0, y: 0, tx: 0, ty: 0 };
+    canvasEl.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      if (!diagramEl.querySelector('svg')) return;
+      // Don't start panning when clicking the expand-tab
+      if (e.target && e.target.closest && e.target.closest('.expand-tab')) return;
+      isPanning = true;
+      canvasEl.classList.add('is-dragging');
+      panStart.x = e.clientX; panStart.y = e.clientY;
+      panStart.tx = tx; panStart.ty = ty;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!isPanning) return;
+      tx = panStart.tx + (e.clientX - panStart.x);
+      ty = panStart.ty + (e.clientY - panStart.y);
+      applyTransform(false);
+    });
+    window.addEventListener('mouseup', function () {
+      if (isPanning) { isPanning = false; canvasEl.classList.remove('is-dragging'); }
+    });
+    canvasEl.addEventListener('dblclick', function (e) {
+      if (e.target && e.target.closest && e.target.closest('.expand-tab')) return;
+      fitToView(true);
+    });
+
+    $('zoom-in').addEventListener('click', function () { scale = Math.min(6, scale * 1.2); applyTransform(true); });
+    $('zoom-out').addEventListener('click', function () { scale = Math.max(0.2, scale / 1.2); applyTransform(true); });
+    $('zoom-fit').addEventListener('click', function () { fitToView(true); });
+    $('reset-layout').addEventListener('click', function () { scale = 1; tx = 0; ty = 0; applyTransform(true); fitToView(true); });
+
+    // ---------- Export ----------
+    function getSvgString() {
+      var svg = diagramEl.querySelector('svg');
+      if (!svg) return null;
+      var clone = svg.cloneNode(true);
+      if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      if (!clone.getAttribute('xmlns:xlink')) clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      var box = clone.getAttribute('viewBox');
+      if (box) {
+        var parts = box.split(/\s+/);
+        if (parts.length === 4) {
+          if (!clone.getAttribute('width')) clone.setAttribute('width', parts[2]);
+          if (!clone.getAttribute('height')) clone.setAttribute('height', parts[3]);
+        }
+      }
+      return new XMLSerializer().serializeToString(clone);
+    }
+    function downloadBlob(blob, filename) {
+      try {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(function () {
+          try { document.body.removeChild(a); } catch (_) {}
+          try { URL.revokeObjectURL(url); } catch (_) {}
+        }, 200);
+        return true;
+      } catch (e) { toast('保存失败：' + (e.message || e), 'error'); return false; }
+    }
+    function tsName(ext) {
+      var d = new Date();
+      var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+      return 'mermaid-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate())
+        + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.' + ext;
+    }
+    function exportSVG() {
+      var svgStr = getSvgString();
+      if (!svgStr) { toast('没有可导出的图表', 'error'); return; }
+      var blob = new Blob(['<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n', svgStr], { type: 'image/svg+xml;charset=utf-8' });
+      if (downloadBlob(blob, tsName('svg'))) toast('SVG 已保存', 'success');
+    }
+    function rasterize(scaleFactor, bg) {
+      return new Promise(function (resolve, reject) {
+        var svgStr = getSvgString();
+        if (!svgStr) return reject(new Error('没有可导出的图表'));
+        var svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        var url = URL.createObjectURL(svgBlob);
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+          var w = img.naturalWidth || img.width;
+          var h = img.naturalHeight || img.height;
+          if (!w || !h) {
+            var svgEl = diagramEl.querySelector('svg');
+            var bb = svgEl ? svgEl.getBoundingClientRect() : null;
+            w = bb ? bb.width / scale : 800;
+            h = bb ? bb.height / scale : 600;
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(2, Math.round(w * scaleFactor));
+          canvas.height = Math.max(2, Math.round(h * scaleFactor));
+          var ctx = canvas.getContext('2d');
+          if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(function (blob) {
+            if (!blob) return reject(new Error('生成 PNG 失败'));
+            resolve(blob);
+          }, 'image/png');
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('SVG 转图片失败')); };
+        img.src = url;
+      });
+    }
+    function exportPNG() {
+      var isDim = document.documentElement.classList.contains('theme-dim');
+      var bg = isDim ? '#262624' : '#FAF9F2';
+      rasterize(2, bg).then(function (blob) {
+        if (downloadBlob(blob, tsName('png'))) toast('PNG 已保存', 'success');
+      }).catch(function (e) { toast('PNG 导出失败：' + (e.message || e), 'error'); });
+    }
+    function copyImage() {
+      if (!navigator.clipboard || !window.ClipboardItem) {
+        var svgStr = getSvgString();
+        if (!svgStr) { toast('没有可复制的图表', 'error'); return; }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(svgStr).then(function () {
+            toast('已复制 SVG 源码（浏览器不支持复制图片）', 'success');
+          }).catch(function () { toast('复制失败', 'error'); });
+        } else { toast('当前浏览器不支持复制', 'error'); }
+        return;
+      }
+      rasterize(2, '#FAF9F2').then(function (blob) {
+        var item = new window.ClipboardItem({ 'image/png': blob });
+        return navigator.clipboard.write([item]);
+      }).then(function () { toast('图片已复制到剪贴板', 'success'); })
+        .catch(function (e) { toast('复制图片失败：' + (e.message || e), 'error'); });
+    }
+    $('export-svg').addEventListener('click', exportSVG);
+    $('export-png').addEventListener('click', exportPNG);
+    $('copy-img').addEventListener('click', copyImage);
+
+    // ---------- Copy / Clear ----------
+    $('copy-code').addEventListener('click', function () {
+      var v = codeEl.value || '';
+      if (!v) { toast('没有可复制的代码', 'error'); return; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(v).then(function () { toast('代码已复制', 'success'); })
+          .catch(function () { fallbackCopy(v); });
+      } else { fallbackCopy(v); }
+    });
+    function fallbackCopy(text) {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        toast('代码已复制', 'success');
+      } catch (e) { toast('复制失败', 'error'); }
+    }
+    $('clear-code').addEventListener('click', function () {
+      if (!codeEl.value) return;
+      codeEl.value = ''; saveDraft(); updateGutter(); showEmpty();
+    });
+
+    // ---------- Theme ----------
+    function setTheme(mode) {
+      document.documentElement.classList.remove('theme-warm', 'theme-dim');
+      document.documentElement.classList.add(mode === 'dim' ? 'theme-dim' : 'theme-warm');
+      safeSet(STORAGE.THEME, mode);
+      initMermaid();
+      if (codeEl.value.trim()) {
+        autoFitOnNextRender = false;
+        render(codeEl.value);
+      }
+    }
+    $('theme-toggle').addEventListener('click', function () {
+      var cur = document.documentElement.classList.contains('theme-dim') ? 'dim' : 'warm';
+      setTheme(cur === 'dim' ? 'warm' : 'dim');
+    });
+
+    // ---------- Collapse code panel ----------
+    function applySavedLayout() {
+      var savedLayout = safeGet(STORAGE.LAYOUT);
+      if (!savedLayout) return;
+      var ratio = parseFloat(savedLayout);
+      if (isNaN(ratio) || ratio <= 0.15 || ratio >= 0.85) return;
+      if (window.innerWidth <= 900) {
+        workspaceEl.style.gridTemplateRows = (ratio * 100).toFixed(2) + '% 6px ' + ((1 - ratio) * 100).toFixed(2) + '%';
+      } else {
+        workspaceEl.style.gridTemplateColumns = (ratio * 100).toFixed(2) + '% 6px ' + ((1 - ratio) * 100).toFixed(2) + '%';
+      }
+    }
+    function setCollapsed(collapsed, skipFit) {
+      if (collapsed) {
+        workspaceEl.classList.add('code-collapsed');
+        workspaceEl.style.gridTemplateColumns = '';
+        workspaceEl.style.gridTemplateRows = '';
+        toggleCodeBtn.classList.add('is-active');
+        toggleCodeBtn.setAttribute('aria-label', '展开代码区');
+        toggleCodeBtn.setAttribute('title', '展开代码区 (Ctrl+B)');
+      } else {
+        workspaceEl.classList.remove('code-collapsed');
+        applySavedLayout();
+        toggleCodeBtn.classList.remove('is-active');
+        toggleCodeBtn.setAttribute('aria-label', '收起代码区');
+        toggleCodeBtn.setAttribute('title', '收起代码区 (Ctrl+B)');
+      }
+      safeSet(STORAGE.COLLAPSED, collapsed ? '1' : '0');
+      if (!skipFit && diagramEl.querySelector('svg')) {
+        setTimeout(function () { fitToView(true); }, 340);
+      }
+    }
+    function toggleCollapsed() {
+      var collapsed = workspaceEl.classList.contains('code-collapsed');
+      setCollapsed(!collapsed);
+    }
+    toggleCodeBtn.addEventListener('click', toggleCollapsed);
+    collapseCodeBtn.addEventListener('click', function () { setCollapsed(true); });
+    expandCodeBtn.addEventListener('click', function () { setCollapsed(false); });
+
+    // ---------- Keyboard shortcuts ----------
+    window.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleCollapsed();
+        return;
+      }
+      if (e.target === codeEl) return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault(); scale = Math.min(6, scale * 1.2); applyTransform(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault(); scale = Math.max(0.2, scale / 1.2); applyTransform(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault(); scale = 1; tx = 0; ty = 0; applyTransform(true);
+      }
+    });
+
+    // ---------- Resizer ----------
+    var savedLayout = safeGet(STORAGE.LAYOUT);
+    if (savedLayout) {
+      var ratio = parseFloat(savedLayout);
+      if (!isNaN(ratio) && ratio > 0.15 && ratio < 0.85) {
+        workspaceEl.style.gridTemplateColumns = (ratio * 100).toFixed(2) + '% 6px ' + ((1 - ratio) * 100).toFixed(2) + '%';
+      }
+    }
+    var isResizing = false;
+    resizerEl.addEventListener('mousedown', function (e) {
+      if (workspaceEl.classList.contains('code-collapsed')) return;
+      isResizing = true;
+      resizerEl.classList.add('is-dragging');
+      workspaceEl.style.transition = 'none';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!isResizing) return;
+      var rect = workspaceEl.getBoundingClientRect();
+      var isVertical = window.innerWidth <= 900;
+      var ratio;
+      if (isVertical) {
+        ratio = (e.clientY - rect.top) / rect.height;
+        ratio = Math.min(0.8, Math.max(0.2, ratio));
+        workspaceEl.style.gridTemplateRows = (ratio * 100).toFixed(2) + '% 6px ' + ((1 - ratio) * 100).toFixed(2) + '%';
+      } else {
+        ratio = (e.clientX - rect.left) / rect.width;
+        ratio = Math.min(0.8, Math.max(0.2, ratio));
+        workspaceEl.style.gridTemplateColumns = (ratio * 100).toFixed(2) + '% 6px ' + ((1 - ratio) * 100).toFixed(2) + '%';
+      }
+      safeSet(STORAGE.LAYOUT, ratio.toFixed(4));
+    });
+    window.addEventListener('mouseup', function () {
+      if (isResizing) {
+        isResizing = false;
+        resizerEl.classList.remove('is-dragging');
+        workspaceEl.style.transition = '';
+        document.body.style.userSelect = '';
+        if (diagramEl.querySelector('svg')) fitToView(true);
+      }
+    });
+
+    // ---------- Examples ----------
+    exampleSelect.addEventListener('change', function (e) {
+      var key = e.target.value;
+      if (!key || !EXAMPLES[key]) return;
+      codeEl.value = EXAMPLES[key];
+      saveDraft(); updateGutter();
+      autoFitOnNextRender = true;
+      scheduleRender();
+      setTimeout(function () { e.target.value = ''; }, 100);
+    });
+
+    // ---------- Draft ----------
+    var saveTimer = null;
+    function saveDraft() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () {
+        if (safeSet(STORAGE.DRAFT, codeEl.value || '')) autosaveTag.textContent = '草稿已保存';
+        else autosaveTag.textContent = '本地保存不可用';
+      }, 500);
+    }
+    codeEl.addEventListener('input', function () {
+      updateGutter(); saveDraft(); scheduleRender();
+    });
+
+    // ---------- Bootstrap ----------
+    function bootstrap() {
+      var savedTheme = safeGet(STORAGE.THEME);
+      if (savedTheme === 'dim') {
+        document.documentElement.classList.remove('theme-warm');
+        document.documentElement.classList.add('theme-dim');
+      }
+      if (safeGet(STORAGE.COLLAPSED) === '1') setCollapsed(true, true);
+
+      if (!initMermaid()) {
+        showError(new Error('Mermaid 库未能初始化。如果你打开的是空白 HTML，可能是文件不完整。'));
+        return;
+      }
+      var draft = safeGet(STORAGE.DRAFT);
+      codeEl.value = (draft && draft.length > 0) ? draft : EXAMPLES.flowchart;
+      updateGutter();
+      autoFitOnNextRender = true;
+      render(codeEl.value);
+      applyTransform(false);
+    }
+
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (diagramEl.querySelector('svg')) fitToView(true);
+      }, 180);
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      bootstrap();
+    }
+  })();
+  </script>
+</body>
+</html>
