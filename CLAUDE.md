@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `mermaid.min.js` | jsdelivr 下载的 mermaid v10.9.1，离线 vendored | **保持原样**，不要重新下载或升级（v11+ 有破坏性 API 变更） |
 | `fengshen-diagrams/*.mmd` | 业务图表，每个文件一张，扫描后注入到下拉菜单 | 用户随时增删改，提交 SVN |
 | `build.ps1` | 唯一的构建入口，把上面三者合成最终产物 | 改这里的逻辑要小心，团队都依赖它 |
+| `watch.ps1` | 可选 · 文件监听器，保存源文件后自动调用 `build.ps1`（防抖 400ms） | 用户自己开窗口跑，Claude 不主动启动它 |
 | `mermaid-studio.html` | 自包含 3.3 MB+ 单文件成品（双击运行） | **永不直接编辑**，每次都从 build.ps1 重生成 |
 
 ## 工作流：改完任何上面的源就立刻重建

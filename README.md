@@ -50,6 +50,8 @@
 
 `build.ps1` 用 `$PSScriptRoot` 自定位，**SVN / git checkout 到任何路径都能运行**，不依赖固定目录。
 
+> **嫌手动跑烦？** 开发时可以在一个 PowerShell 窗口里开着 `.\watch.ps1`，它会监听 `template.html` 和 `fengshen-diagrams/*.mmd` 的保存事件，自动调用 `build.ps1`（400ms 防抖）。`Ctrl + C` 停止。
+
 ## 添加业务图表
 
 下拉菜单"**载入封神图表**"的内容来自 [`fengshen-diagrams/`](./fengshen-diagrams) 文件夹。
