@@ -1107,7 +1107,9 @@
         securityLevel: 'loose',
         theme: 'base',
         fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
-        flowchart: { useMaxWidth: false, htmlLabels: true, curve: 'basis', padding: 18 },
+        // htmlLabels:false → 节点文字用原生 SVG <text> 而非 <foreignObject>。
+        // foreignObject 会污染(taint) canvas，导致 PNG 导出时 toBlob 返回 null（“生成 PNG 失败”）。
+        flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', padding: 18 },
         sequence: { useMaxWidth: false, mirrorActors: false, showSequenceNumbers: false, actorMargin: 60 },
         gantt: { useMaxWidth: false, leftPadding: 80 },
         er: { useMaxWidth: false },
