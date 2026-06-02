@@ -216,6 +216,14 @@
     background: var(--accent-soft);
     color: var(--accent);
   }
+  /* AI toggle (a .btn-primary) shows a pressed/active state while the panel is open */
+  .btn-primary.is-active {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    box-shadow: inset 0 1px 3px rgba(42, 38, 32, 0.28);
+    transform: none;
+  }
+  .btn-primary.is-active:hover { transform: none; }
 
   .select-wrap {
     position: relative;
@@ -725,6 +733,353 @@
       animation-duration: 0.01ms !important;
     }
   }
+
+  /* ============ AI ASSISTANT · IN-LAYOUT PANEL ============ */
+  /* The AI chat is a sibling panel in the same layer as code/preview —
+     it shares horizontal space (pushing, not overlaying) and can expand / collapse. */
+  .stage {
+    display: flex;
+    min-height: 0;
+    align-items: stretch;
+  }
+  .stage > .workspace {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .ai-resizer {
+    flex: 0 0 6px;
+    position: relative;
+    cursor: col-resize;
+    align-self: stretch;
+  }
+  .ai-resizer::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 32px;
+    background: var(--border);
+    border-radius: 2px;
+    transition: background .2s ease, height .2s ease;
+  }
+  .ai-resizer:hover::after,
+  .ai-resizer.is-dragging::after {
+    background: var(--accent);
+    height: 56px;
+  }
+  .stage:not(.ai-open) .ai-resizer { display: none; }
+
+  .ai-panel {
+    flex: 0 0 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-paper);
+    border: 1px solid var(--border);
+    border-width: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    opacity: 0;
+    pointer-events: none;
+    transition: flex-basis .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease, border-width .2s ease;
+  }
+  .stage.ai-open .ai-panel {
+    flex-basis: var(--ai-panel-w, 400px);
+    border-width: 1px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .stage.ai-dragging .ai-panel,
+  .stage.ai-dragging .workspace { transition: none; }
+
+  .ai-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 14px 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--accent-soft), transparent);
+    flex-shrink: 0;
+  }
+  .ai-head-title { display: flex; align-items: center; gap: 9px; }
+  .ai-head-title svg { width: 18px; height: 18px; color: var(--accent); }
+  .ai-head-title h2 {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .ai-head-actions { display: flex; align-items: center; gap: 2px; }
+
+  .ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 18px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .ai-empty {
+    margin: auto;
+    text-align: center;
+    color: var(--ink-3);
+    max-width: 300px;
+  }
+  .ai-empty .pane-mark {
+    font-family: var(--font-serif);
+    font-size: 40px;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .ai-empty p {
+    margin: 0 0 14px;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+  .ai-suggest {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .ai-chip {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-sunken);
+    color: var(--ink-2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .ai-chip:hover { border-color: var(--accent-mid); background: var(--bg-paper); color: var(--ink-1); }
+
+  .ai-msg { display: flex; flex-direction: column; max-width: 100%; }
+  .ai-msg-role {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 11.5px;
+    color: var(--ink-4);
+    margin-bottom: 5px;
+    letter-spacing: 0.02em;
+  }
+  .ai-msg-body {
+    font-size: 13.5px;
+    line-height: 1.66;
+    color: var(--ink-1);
+    word-break: break-word;
+  }
+  .ai-msg.user .ai-msg-body {
+    align-self: flex-start;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-mid);
+    border-radius: 10px;
+    padding: 9px 13px;
+  }
+  .ai-msg.assistant .ai-msg-body { padding: 0 1px; }
+  .ai-msg-body pre {
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    white-space: pre;
+  }
+  .ai-code-block { position: relative; }
+  .ai-apply {
+    appearance: none;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 2px 0 8px;
+    transition: background .15s ease;
+  }
+  .ai-apply:hover { background: var(--accent-hover); }
+  .ai-cursor::after {
+    content: '▍';
+    color: var(--accent);
+    animation: pulse 1s steps(2) infinite;
+  }
+
+  .ai-compose {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    padding: 12px 14px 14px;
+    background: var(--bg-paper);
+  }
+  #ai-input {
+    width: 100%;
+    resize: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-base);
+    color: var(--ink-1);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 11px 13px;
+    min-height: 64px;
+    max-height: 180px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  #ai-input:focus { border-color: var(--accent-mid); box-shadow: var(--focus-ring); }
+  #ai-input::placeholder { color: var(--ink-4); font-style: italic; font-family: var(--font-serif); }
+  .ai-compose-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 9px;
+    gap: 10px;
+  }
+  .ai-model-tag {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--ink-4);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 230px;
+  }
+  .ai-model-tag:hover { color: var(--accent); }
+  .ai-model-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-mute); flex-shrink: 0; }
+  .ai-model-tag.ready .dot { background: var(--success); }
+  .ai-send-row { display: flex; align-items: center; gap: 6px; }
+  #ai-send { padding: 7px 18px; }
+  #ai-send:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* ============ AI SETTINGS · MODAL ============ */
+  .ai-modal-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(42, 38, 32, 0.4);
+    backdrop-filter: blur(2px);
+    padding: 24px;
+  }
+  .ai-modal-scrim.show { display: flex; }
+  :root.theme-dim .ai-modal-scrim { background: rgba(0, 0, 0, 0.55); }
+  .ai-modal {
+    width: 480px;
+    max-width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--bg-paper);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-modal-head {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ai-modal-head h2 {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink-1);
+  }
+  .ai-modal-head p {
+    margin: 5px 0 0;
+    font-size: 12.5px;
+    color: var(--ink-3);
+    line-height: 1.6;
+  }
+  .ai-form { padding: 18px 22px; display: flex; flex-direction: column; gap: 15px; }
+  .ai-field { display: flex; flex-direction: column; gap: 6px; }
+  .ai-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    letter-spacing: 0.01em;
+  }
+  .ai-field .hint { font-size: 11px; color: var(--ink-4); font-weight: 400; line-height: 1.5; }
+  .ai-field input, .ai-field select, .ai-field textarea {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-base);
+    color: var(--ink-1);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .ai-field input:focus, .ai-field select:focus, .ai-field textarea:focus {
+    border-color: var(--accent-mid);
+    box-shadow: var(--focus-ring);
+  }
+  .ai-field input[type="password"], .ai-field input#ai-cfg-key { font-family: var(--font-mono); letter-spacing: 0.04em; }
+  .ai-field textarea { resize: vertical; min-height: 70px; font-size: 12.5px; line-height: 1.6; }
+  .ai-key-wrap { position: relative; display: flex; align-items: center; }
+  .ai-key-wrap input { flex: 1; padding-right: 56px; }
+  .ai-key-toggle {
+    position: absolute;
+    right: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 5px;
+  }
+  .ai-key-toggle:hover { background: var(--bg-deep); color: var(--ink-1); }
+  .ai-modal-foot {
+    padding: 14px 22px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .ai-modal-foot .note { font-size: 11px; color: var(--ink-4); line-height: 1.5; flex: 1; }
+  .ai-modal-foot .btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+  /* On narrow screens the stage stacks vertically: chat docks below as a row, no width-resizer. */
+  @media (max-width: 900px) {
+    .stage { flex-direction: column; }
+    .stage > .workspace { flex: 1 1 auto; }
+    .ai-resizer { display: none !important; }
+    .ai-panel {
+      flex: 0 0 0;
+      transition: flex-basis .32s cubic-bezier(.4, 0, .2, 1), opacity .22s ease, border-width .2s ease;
+    }
+    .stage.ai-open .ai-panel { flex-basis: min(55vh, 460px); }
+  }
 </style>
 </head>
 <body>
@@ -741,6 +1096,10 @@
         </div>
       </div>
       <div class="actions">
+        <button class="btn-primary" id="ai-toggle" title="用自然语言生成图表 (Ctrl+J)" aria-label="AI 助手" style="padding:7px 14px;">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8L19 14z"/></svg>
+          <span>AI 助手</span>
+        </button>
         <div class="select-wrap">
           <select id="fengshen-select" class="tk-select" aria-label="载入封神图表">
             <option value="">载入封神图表…</option>
@@ -775,6 +1134,8 @@
       </div>
     </header>
 
+    <!-- ========== STAGE: workspace + AI panel share the same layer (side-by-side, no overlay) ========== -->
+    <div class="stage" id="stage">
     <!-- ========== WORKSPACE ========== -->
     <main class="workspace" id="workspace">
       <!-- code panel -->
@@ -841,6 +1202,41 @@
       </section>
     </main>
 
+      <!-- AI panel resizer (drag to set chat width; only visible when panel is open) -->
+      <div class="ai-resizer" id="ai-resizer" role="separator" aria-orientation="vertical" tabindex="0" title="拖动调整 AI 面板宽度"></div>
+
+      <!-- AI assistant panel — same layer as code/preview, expands/collapses -->
+      <aside class="ai-panel" id="ai-panel" aria-hidden="true" aria-label="AI 助手">
+        <header class="ai-head">
+          <div class="ai-head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8L19 14z"/></svg>
+            <h2>AI 助手</h2>
+          </div>
+          <div class="ai-head-actions">
+            <button class="btn-icon" id="ai-settings" title="模型设置" aria-label="模型设置">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="btn-icon" id="ai-clear-chat" title="清空对话" aria-label="清空对话">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <button class="btn-icon" id="ai-close" title="收起 AI 面板 (Ctrl+J)" aria-label="收起 AI 面板">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="ai-messages" id="ai-messages"></div>
+        <div class="ai-compose">
+          <textarea id="ai-input" rows="2" spellcheck="false" placeholder="用自然语言描述你想要的图，例如：画一个用户下单到收货的流程图"></textarea>
+          <div class="ai-compose-bar">
+            <span class="ai-model-tag" id="ai-model-tag" title="点击配置模型"><span class="dot"></span><span id="ai-model-text">未配置模型</span></span>
+            <div class="ai-send-row">
+              <button class="btn-primary" id="ai-send" title="发送 (Enter)">生成</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
     <!-- ========== STATUS BAR ========== -->
     <footer class="statusbar">
       <div class="status-left">
@@ -857,6 +1253,59 @@
         <span class="status-item" id="status-time">--:--:--</span>
       </div>
     </footer>
+  </div>
+
+  <!-- ========== AI SETTINGS MODAL ========== -->
+  <div class="ai-modal-scrim" id="ai-modal-scrim" aria-hidden="true">
+    <div class="ai-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+      <div class="ai-modal-head">
+        <h2 id="ai-modal-title">模型设置</h2>
+        <p>填入你自己的大模型 API。配置只保存在本机浏览器（localStorage），不会写入文件、不会上传、不会进入分享出去的 HTML。</p>
+      </div>
+      <div class="ai-form">
+        <div class="ai-field">
+          <label for="ai-cfg-provider">服务商</label>
+          <select id="ai-cfg-provider">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+            <option value="claude">Claude (Anthropic)</option>
+            <option value="qwen">通义千问 (DashScope)</option>
+            <option value="custom">自定义（OpenAI 兼容）</option>
+          </select>
+        </div>
+        <div class="ai-field">
+          <label for="ai-cfg-base">API 地址 (Base URL)</label>
+          <input id="ai-cfg-base" type="text" autocomplete="off" spellcheck="false" placeholder="https://api.deepseek.com/v1">
+          <span class="hint">OpenAI 兼容服务填到 /v1 即可（程序会自动追加 /chat/completions）；Claude 填到 /v1。</span>
+        </div>
+        <div class="ai-field">
+          <label for="ai-cfg-key">API Key</label>
+          <div class="ai-key-wrap">
+            <input id="ai-cfg-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-...">
+            <button type="button" class="ai-key-toggle" id="ai-cfg-key-toggle">显示</button>
+          </div>
+        </div>
+        <div class="ai-field">
+          <label for="ai-cfg-model">模型名称</label>
+          <input id="ai-cfg-model" type="text" autocomplete="off" spellcheck="false" placeholder="deepseek-chat">
+        </div>
+        <div class="ai-field">
+          <label for="ai-cfg-protocol">接口协议</label>
+          <select id="ai-cfg-protocol">
+            <option value="openai">OpenAI 兼容 (/chat/completions)</option>
+            <option value="claude">Claude Messages (/messages)</option>
+          </select>
+          <span class="hint">选预设服务商时会自动设置，自定义时按你的服务选择。</span>
+        </div>
+      </div>
+      <div class="ai-modal-foot">
+        <span class="note">⚠️ file:// 直连云端 API 可能遇到浏览器跨域(CORS)限制，详见 README。</span>
+        <div class="btns">
+          <button class="btn-soft" id="ai-cfg-cancel">取消</button>
+          <button class="btn-primary" id="ai-cfg-save">保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
@@ -2897,7 +3346,7 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
 
   <!-- ========== FENGSHEN DIAGRAMS DATA (injected by build.ps1 from fengshen-diagrams/*.mmd) ========== -->
   <script>
-  window.FENGSHEN_DIAGRAMS = [{"name":"Demo · 战斗循环示例","code":"%% title: Demo · 战斗循环示例\ngraph LR\n    A[战斗开始] --\u003e B{技能可用?}\n    B -- 是 --\u003e C[释放技能]\n    B -- 否 --\u003e D[普通攻击]\n    C --\u003e E[结算伤害]\n    D --\u003e E\n    E --\u003e F{敌人存活?}\n    F -- 是 --\u003e B\n    F -- 否 --\u003e G[战斗结束]\n"},{"name":"封神数值公式","code":"%% title: 封神数值公式\nflowchart LR\n    START([⚔️ 攻击发起 / 技能触发]):::start\n\n    %% =================================================\n    %% Region 1\n    %% =================================================\n    subgraph R1[\"🔥 Region 1 · 原始伤害区\"]\n        direction LR\n    \n        M1[\"乘区1 · 攻击力\u003cbr/\u003e输出 ＝ a.基础攻击 × ❪1 ＋ a.基础攻击加成❫ ＋ a.附加攻击\"]:::formula\n        A_M1_1[/\"a.基础攻击 ATK_BASE\u003cbr/\u003e整数 / 不可负\"/]:::attr\n        A_M1_2[/\"a.基础攻击加成 ATK_BASE_PER\u003cbr/\u003e万分比 / 可为负\"/]:::attr\n        A_M1_3[/\"a.附加攻击 ATK_ADD\u003cbr/\u003e整数 / 可为负\"/]:::attr\n        A_M1_1 -.-\u003e M1\n        A_M1_2 -.-\u003e M1\n        A_M1_3 -.-\u003e M1\n    \n        M2_DEF[\"先计算 ¤计算防御值\u003cbr/\u003e¤计算防御值 ＝ MAX❮ ❪b.防御 − a.无视防御❫ × ❪1 ＋ b.防御提升万分比 − b.防御降低万分比❫ − a.破防值 , 0 ❯\"]:::interim\n        M2[\"乘区2 · 防御率\u003cbr/\u003e输出 ＝ MAX❮ 乘区1输出 × ❪1 − F防御率❪¤计算防御值❫ ＋ a.破防率❫ ＋ a.通用伤害附加值 − b.通用伤害减免值 ＋ a.条件伤害附加值 − b.条件伤害减免值 , 乘区1输出 × 0.05 保底5％ ❯\"]:::formula\n        A_M2_1[/\"b.防御 DEF\"/]:::attr\n        A_M2_2[/\"a.无视防御 ANTI_DEF\"/]:::attr\n        A_M2_3[/\"b.防御提升万分比 DEF_PER\"/]:::attr\n        A_M2_4[/\"a.防御降低万分比 ANTI_DEF_PER\"/]:::attr\n        A_M2_5[/\"a.破防值 DEF_RED\u003cbr/\u003e乘后扣 / 保值\"/]:::attr\n        A_M2_6[/\"a.破防率 DEF_RED_PER\"/]:::attr\n        A_M2_7[/\"a.通用伤害附加值 CMN_DMG_ADD\"/]:::attr\n        A_M2_8[/\"b.通用伤害减免值 CMN_HURT_RED\"/]:::attr\n        A_M2_9[/\"a.条件伤害附加值 COND_DMG_ADD\"/]:::attr\n        A_M2_10[/\"b.条件伤害减免值 COND_HURT_RED\"/]:::attr\n        A_M2_1 -.-\u003e M2_DEF\n        A_M2_2 -.-\u003e M2_DEF\n        A_M2_3 -.-\u003e M2_DEF\n        A_M2_4 -.-\u003e M2_DEF\n        A_M2_5 -.-\u003e M2_DEF\n        M2_DEF --\u003e M2\n        A_M2_6 -.-\u003e M2\n        A_M2_7 -.-\u003e M2\n        A_M2_8 -.-\u003e M2\n        A_M2_9 -.-\u003e M2\n        A_M2_10 -.-\u003e M2\n    \n        M3[\"乘区3 · 技能系数\u003cbr/\u003e输出 ＝ 乘区2输出 × 技能系数 ＋ 技能固定值\"]:::formula\n        A_M3_1[/\"技能系数 / 来自技能配置 / 万分比\"/]:::attr\n        A_M3_2[/\"技能固定值 / 来自技能配置 / 整数\"/]:::attr\n        A_M3_1 -.-\u003e M3\n        A_M3_2 -.-\u003e M3\n    \n        M1 --\u003e M2\n        M2 --\u003e M3\n    end\n    \n    %% =================================================\n    %% Region 2\n    %% =================================================\n    subgraph R2[\"💥 Region 2 · 化解会心区\"]\n        direction LR\n    \n        CRIT_RATE[\"计算 ¤计算会心率\u003cbr/\u003e¤计算会心率 ＝ F会心率❪MAX❪a.会心值 , 0❫❫ ＋ a.会心率\"]:::interim\n        CRIT_BRANCH{\"掷骰判定 / 是否触发会心？\"}:::branch\n        A_CR_1[/\"a.会心值 CRIT\"/]:::attr\n        A_CR_2[/\"a.会心率 CRIT_PER\"/]:::attr\n        A_CR_1 -.-\u003e CRIT_RATE\n        A_CR_2 -.-\u003e CRIT_RATE\n        CRIT_RATE --\u003e CRIT_BRANCH\n    \n        M4_YES[\"乘区4 · 会心触发\u003cbr/\u003e输出 ＝ 乘区3输出 × ❮ 1.5 ＋ F会心倍率❪a.会伤值 − b.会伤减免值❫ ＋ a.会伤加成 − b.会伤减免 ❯\"]:::formula\n        M4_NO[\"乘区4 · 未触发\u003cbr/\u003e输出 ＝ 乘区3输出 × 1\"]:::formulaPass\n        A_M4_1[/\"a.会伤值 CRIT_DMG\"/]:::attr\n        A_M4_2[/\"b.会伤减免值\"/]:::attr\n        A_M4_3[/\"a.会伤加成 CRIT_DMG_PER\"/]:::attr\n        A_M4_4[/\"b.会伤减免\"/]:::attr\n        A_M4_1 -.-\u003e M4_YES\n        A_M4_2 -.-\u003e M4_YES\n        A_M4_3 -.-\u003e M4_YES\n        A_M4_4 -.-\u003e M4_YES\n    \n        CRIT_BRANCH --\u003e|是| M4_YES\n        CRIT_BRANCH --\u003e|否| M4_NO\n    \n        DODGE_BRANCH{\"伤害是否为直接伤害 且 触发化解？\"}:::branch\n    \n        M5_YES[\"乘区5 · 化解触发\u003cbr/\u003e¤计算化解率 ＝ F化解率❪MAX❪b.化解值 − a.精通值 , 0❫❫ ＋ b.化解率 − a.精通率\u003cbr/\u003e输出 ＝ 乘区4输出 × MAX❮ 0.5 − F化解倍率❪b.化解效果值 − b.精通效果值❫ − b.化解效果率 ＋ a.精通效果率 , 0.25 封底25％ ❯\"]:::formula\n        M5_NO[\"乘区5 · 不化解\u003cbr/\u003e输出 ＝ 乘区4输出 × 1\"]:::formulaPass\n        A_M5_1[/\"b.化解值\"/]:::attr\n        A_M5_2[/\"a.精通值（化解对抗）\"/]:::attr\n        A_M5_3[/\"b.化解率\"/]:::attr\n        A_M5_4[/\"a.精通率\"/]:::attr\n        A_M5_5[/\"b.化解效果值\"/]:::attr\n        A_M5_6[/\"b.精通效果值\"/]:::attr\n        A_M5_7[/\"b.化解效果率\"/]:::attr\n        A_M5_8[/\"a.精通效果率\"/]:::attr\n        A_M5_1 -.-\u003e M5_YES\n        A_M5_2 -.-\u003e M5_YES\n        A_M5_3 -.-\u003e M5_YES\n        A_M5_4 -.-\u003e M5_YES\n        A_M5_5 -.-\u003e M5_YES\n        A_M5_6 -.-\u003e M5_YES\n        A_M5_7 -.-\u003e M5_YES\n        A_M5_8 -.-\u003e M5_YES\n    \n        M4_YES --\u003e DODGE_BRANCH\n        M4_NO --\u003e DODGE_BRANCH\n        DODGE_BRANCH --\u003e|是| M5_YES\n        DODGE_BRANCH --\u003e|否| M5_NO\n    end\n    \n    %% =================================================\n    %% Region 3\n    %% =================================================\n    subgraph R3[\"🌀 Region 3 · 属性增伤区\"]\n        direction LR\n    \n        M6[\"乘区6 · 伤害加深\u003cbr/\u003e输出 ＝ 上一乘区 × ❪1 ＋ a.伤害加深❫\"]:::formula\n        A_M6[/\"a.伤害加深\"/]:::attr\n        A_M6 -.-\u003e M6\n    \n        M7[\"乘区7 · 伤害弱化\u003cbr/\u003e输出 ＝ 乘区6 × ❮1 − MIN❪b.受伤弱化 , 0.75 封顶75％❫❯\"]:::formula\n        A_M7[/\"b.受伤弱化\"/]:::attr\n        A_M7 -.-\u003e M7\n    \n        M8[\"乘区8 · 威压\u003cbr/\u003e输出 ＝ 乘区7 × ❪a.威压 ／ b.威压❫\u003cbr/\u003e※ 等级压制机制\"]:::formula\n        A_M8_1[/\"a.威压\"/]:::attr\n        A_M8_2[/\"b.威压\"/]:::attr\n        A_M8_1 -.-\u003e M8\n        A_M8_2 -.-\u003e M8\n    \n        M9[\"乘区9 · 主类型增伤\u003cbr/\u003e输出 ＝ 乘区8 × ❮1 ＋ Σ❪是否对应主类 ？ a.对应增伤 ： 0❫❯\"]:::formula\n        A_M9_1[/\"a.功法技主类增伤\"/]:::attr\n        A_M9_2[/\"a.心法主类增伤\"/]:::attr\n        A_M9_3[/\"a.神识技主类增伤\"/]:::attr\n        A_M9_4[/\"a.本命法宝技主类增伤\"/]:::attr\n        A_M9_5[/\"...等所有主类增伤\"/]:::attr\n        A_M9_1 -.-\u003e M9\n        A_M9_2 -.-\u003e M9\n        A_M9_3 -.-\u003e M9\n        A_M9_4 -.-\u003e M9\n        A_M9_5 -.-\u003e M9\n    \n        M10[\"乘区10 · 子类型增伤\u003cbr/\u003e输出 ＝ 乘区9 × ❮1 ＋ Σ❪是否对应子类 ？ a.对应增伤 ： 0❫❯\"]:::formula\n        A_M10_1[/\"a.招式子类增伤\"/]:::attr\n        A_M10_2[/\"a.奇术子类增伤\"/]:::attr\n        A_M10_3[/\"a.神通子类增伤\"/]:::attr\n        A_M10_4[/\"a.驭兽技子类增伤\"/]:::attr\n        A_M10_5[/\"...等所有子类增伤\"/]:::attr\n        A_M10_1 -.-\u003e M10\n        A_M10_2 -.-\u003e M10\n        A_M10_3 -.-\u003e M10\n        A_M10_4 -.-\u003e M10\n        A_M10_5 -.-\u003e M10\n    \n        M11[\"乘区11 · 基础类型增伤\u003cbr/\u003e＜直接伤害＞ 乘区10 × ❪1 ＋ a.直接伤害加深❫ ／ ＜间接伤害＞ 乘区10 × ❪1 ＋ a.间接伤害加深❫\"]:::formula\n        A_M11_1[/\"a.直接伤害加深\"/]:::attr\n        A_M11_2[/\"a.间接伤害加深\"/]:::attr\n        A_M11_1 -.-\u003e M11\n        A_M11_2 -.-\u003e M11\n    \n        M12[\"乘区12 · 技能标签增伤\u003cbr/\u003e输出 ＝ 乘区11 × ❪1 ＋ ¤标签增伤率❫\u003cbr/\u003e※ 标签 ／ 飞弹 ／ 连击 ／ 叠伤 ／ 清算 ／ 标记 ...\"]:::formula\n        A_M12[/\"¤标签增伤率 ＝ Σ匹配标签的增伤率\u003cbr/\u003e例 a.飞弹标签增伤率 ／ a.连击标签增伤率 ...\"/]:::attr\n        A_M12 -.-\u003e M12\n    \n        M13[\"乘区13 · 五行增伤\u003cbr/\u003e输出 ＝ 乘区12 × ❮1 ＋ Σ❪是否对应五行 ？ F五行增伤❪a.五行增伤值❫ ＋ a.五行增伤率 ： 0❫ ＋ ❪是否任意五行 ？ F五行增伤❪a.全五行增伤值❫ ＋ a.全五行增伤率 ： 0❫❯\"]:::formula\n        A_M13_1[/\"a.金／木／水／火／土 五行增伤值\"/]:::attr\n        A_M13_2[/\"a.金／木／水／火／土 五行增伤率\"/]:::attr\n        A_M13_3[/\"a.全五行增伤值／率\"/]:::attr\n        A_M13_1 -.-\u003e M13\n        A_M13_2 -.-\u003e M13\n        A_M13_3 -.-\u003e M13\n    \n        M14[\"乘区14 · 五行减伤\u003cbr/\u003e输出 ＝ 乘区13 × ❮1 − MIN❪Σ五行减伤项 , 0.75 封顶75％❫❯\"]:::formula\n        A_M14_1[/\"b.金／木／水／火／土 五行减伤值\"/]:::attr\n        A_M14_2[/\"b.金／木／水／火／土 五行减伤率\"/]:::attr\n        A_M14_3[/\"b.全五行减伤值／率\"/]:::attr\n        A_M14_1 -.-\u003e M14\n        A_M14_2 -.-\u003e M14\n        A_M14_3 -.-\u003e M14\n    \n        M15[\"乘区15 · 异常状态增伤\u003cbr/\u003e输出 ＝ 乘区14 × ❮1 ＋ Σ❪对方对应异常 ？ a.对应异常增伤率 ： 0❫ ＋ ❪对方任意异常 ？ a.异常增伤率 ： 0❫❯\"]:::formula\n        A_M15_1[/\"a.中毒异常增伤率\"/]:::attr\n        A_M15_2[/\"a.眩晕异常增伤率\"/]:::attr\n        A_M15_3[/\"a.减速异常增伤率\"/]:::attr\n        A_M15_4[/\"a.异常增伤率 / 全异常通用\"/]:::attr\n        A_M15_1 -.-\u003e M15\n        A_M15_2 -.-\u003e M15\n        A_M15_3 -.-\u003e M15\n        A_M15_4 -.-\u003e M15\n    \n        M6 --\u003e M7 --\u003e M8 --\u003e M9 --\u003e M10 --\u003e M11 --\u003e M12 --\u003e M13 --\u003e M14 --\u003e M15\n    end\n    \n    %% =================================================\n    %% Region 4\n    %% =================================================\n    subgraph R4[\"✨ Region 4 · 战斗效果增伤区\"]\n        direction LR\n    \n        M16[\"乘区16 · 技能效果·被动增伤\u003cbr/\u003e输出 ＝ 乘区15 × ❪1 ＋ a.技能效果·被动增伤率❫\"]:::formula\n        A_M16[/\"a.技能效果·被动增伤率\"/]:::attr\n        A_M16 -.-\u003e M16\n    \n        M17[\"乘区17 · 技能效果·被动减伤\u003cbr/\u003e输出 ＝ 乘区16 × ❮1 − MIN❪b.技能效果·被动减伤率 , 0.75 封顶75％❫❯\"]:::formula\n        A_M17[/\"b.技能效果·被动减伤率\"/]:::attr\n        A_M17 -.-\u003e M17\n    \n        M18[\"乘区18 · 主动增伤 攻方\u003cbr/\u003e输出 ＝ 乘区17 × ❮1 ＋ MAX❪a.主动技能自身增伤 − a.对方伤害降低 , −0.75 封底❫❯\"]:::formula\n        A_M18_1[/\"a.技能效果·主动技能自身增伤 / 临时buff\"/]:::attr\n        A_M18_2[/\"a.技能效果·对方伤害降低 / 挂在自己身上的虚弱debuff\"/]:::attr\n        A_M18_1 -.-\u003e M18\n        A_M18_2 -.-\u003e M18\n    \n        M19[\"乘区19 · 主动减伤 守方\u003cbr/\u003e输出 ＝ 乘区18 × ❮1 ＋ MAX❪b.对方受到伤害增加 − b.主动技能自身减伤 , −0.75 封底❫❯\"]:::formula\n        A_M19_1[/\"b.技能效果·对方受到伤害增加 / 易伤debuff\"/]:::attr\n        A_M19_2[/\"b.技能效果·主动技能自身减伤 / 守方临时减伤buff\"/]:::attr\n        A_M19_1 -.-\u003e M19\n        A_M19_2 -.-\u003e M19\n    \n        M20[\"乘区20 · 局内条件增伤\u003cbr/\u003e输出 ＝ 乘区19 × ❪1 ＋ a.局内条件增伤❫\"]:::formula\n        A_M20[/\"a.局内条件增伤\"/]:::attr\n        A_M20 -.-\u003e M20\n    \n        M21[\"乘区21 · 战斗道具增伤\u003cbr/\u003e输出 ＝ 乘区20 × ❪1 ＋ a.技能效果·战斗道具增伤❫\"]:::formula\n        A_M21[/\"a.技能效果·战斗道具增伤\"/]:::attr\n        A_M21 -.-\u003e M21\n    \n        M22[\"乘区22 · 单位类型增伤\u003cbr/\u003e输出 ＝ ※敌人类型对应增伤 × MIN❮0.75 , ❪1 − 我为妖王 ？ b.受妖王伤害降低 ： 0 − 我为修士 ？ b.受修士伤害降低 ： 0 − 我为召唤物 ？ b.受召唤物伤害降低 ： 0 ...❫❯\"]:::formula\n        A_M22_1[/\"a.对妖王 ／ 对修士 ／ 对召唤物增伤 ...\"/]:::attr\n        A_M22_2[/\"b.受妖王 ／ 受修士伤害降低 ...\"/]:::attr\n        A_M22_1 -.-\u003e M22\n        A_M22_2 -.-\u003e M22\n    \n        M23[\"乘区23 · 玩法类型增伤\u003cbr/\u003e＜演武＞ 乘区22 × ❮1 ＋ MAX❪a.演武伤害增加 − a.演武伤害降低 , −0.75❫❯ ／ ＜小秘境＞ ＜大秘境＞ ＜爬塔＞ 同构\"]:::formula\n        A_M23_1[/\"a.玩法·演武伤害增加／降低\"/]:::attr\n        A_M23_2[/\"a.玩法·小秘境伤害增加／降低\"/]:::attr\n        A_M23_3[/\"a.玩法·大秘境伤害增加／降低\"/]:::attr\n        A_M23_4[/\"a.玩法·爬塔伤害增加／降低\"/]:::attr\n        A_M23_1 -.-\u003e M23\n        A_M23_2 -.-\u003e M23\n        A_M23_3 -.-\u003e M23\n        A_M23_4 -.-\u003e M23\n    \n        M24[\"乘区24 · 最终伤害增加\u003cbr/\u003e输出 ＝ 乘区23 × ❪1 ＋ a.最终伤害增加❫\"]:::formula\n        A_M24[/\"a.最终伤害增加 / 最稀有最强\"/]:::attr\n        A_M24 -.-\u003e M24\n    \n        M25[\"乘区25 · 最终伤害减免\u003cbr/\u003e最终伤害 ＝ 乘区24 × ❮1 − MIN❪b.最终伤害减免 , 0.75 封顶75％❫❯\"]:::formula\n        A_M25[/\"b.最终伤害减免 / 守方终极减伤\"/]:::attr\n        A_M25 -.-\u003e M25\n    \n        M16 --\u003e M17 --\u003e M18 --\u003e M19 --\u003e M20 --\u003e M21 --\u003e M22 --\u003e M23 --\u003e M24 --\u003e M25\n    end\n    \n    END([💥 最终伤害值 / 显示在被攻击者头顶]):::endNode\n    \n    START --\u003e M1\n    M3 --\u003e CRIT_RATE\n    M5_YES --\u003e M6\n    M5_NO --\u003e M6\n    M15 --\u003e M16\n    M25 --\u003e END\n    \n    classDef start fill:#2E86AB,stroke:#1E5E7C,color:#fff,stroke-width:3px\n    classDef endNode fill:#06A77D,stroke:#04644B,color:#fff,stroke-width:3px\n    classDef formula fill:#FFF4D6,stroke:#D4A017,color:#000,stroke-width:2px\n    classDef formulaPass fill:#F0F0F0,stroke:#888,color:#444,stroke-width:1px,stroke-dasharray: 5 5\n    classDef interim fill:#FFE4B5,stroke:#CD853F,color:#000,stroke-width:1px\n    classDef branch fill:#FFB347,stroke:#CC7722,color:#000,stroke-width:2px\n    classDef attr fill:#E8F0FE,stroke:#4A90E2,color:#1A3A5C,stroke-width:1px\n"}];
+  window.FENGSHEN_DIAGRAMS = [{"name":"封神数值公式","code":"%% title: 封神数值公式\nflowchart LR\n    START([⚔️ 攻击发起 / 技能触发]):::start\n\n    %% =================================================\n    %% Region 1\n    %% =================================================\n    subgraph R1[\"🔥 Region 1 · 原始伤害区\"]\n        direction LR\n    \n        M1[\"乘区1 · 攻击力<br/>输出 ＝ a.基础攻击 × ❪1 ＋ a.基础攻击加成❫ ＋ a.附加攻击\"]:::formula\n        A_M1_1[/\"a.基础攻击 ATK_BASE<br/>整数 / 不可负\"/]:::attr\n        A_M1_2[/\"a.基础攻击加成 ATK_BASE_PER<br/>万分比 / 可为负\"/]:::attr\n        A_M1_3[/\"a.附加攻击 ATK_ADD<br/>整数 / 可为负\"/]:::attr\n        A_M1_1 -.-> M1\n        A_M1_2 -.-> M1\n        A_M1_3 -.-> M1\n    \n        M2_DEF[\"先计算 ¤计算防御值<br/>¤计算防御值 ＝ MAX❮ ❪b.防御 − a.无视防御❫ × ❪1 ＋ b.防御提升万分比 − b.防御降低万分比❫ − a.破防值 , 0 ❯\"]:::interim\n        M2[\"乘区2 · 防御率<br/>输出 ＝ MAX❮ 乘区1输出 × ❪1 − F防御率❪¤计算防御值❫ ＋ a.破防率❫ ＋ a.通用伤害附加值 − b.通用伤害减免值 ＋ a.条件伤害附加值 − b.条件伤害减免值 , 乘区1输出 × 0.05 保底5％ ❯\"]:::formula\n        A_M2_1[/\"b.防御 DEF\"/]:::attr\n        A_M2_2[/\"a.无视防御 ANTI_DEF\"/]:::attr\n        A_M2_3[/\"b.防御提升万分比 DEF_PER\"/]:::attr\n        A_M2_4[/\"a.防御降低万分比 ANTI_DEF_PER\"/]:::attr\n        A_M2_5[/\"a.破防值 DEF_RED<br/>乘后扣 / 保值\"/]:::attr\n        A_M2_6[/\"a.破防率 DEF_RED_PER\"/]:::attr\n        A_M2_7[/\"a.通用伤害附加值 CMN_DMG_ADD\"/]:::attr\n        A_M2_8[/\"b.通用伤害减免值 CMN_HURT_RED\"/]:::attr\n        A_M2_9[/\"a.条件伤害附加值 COND_DMG_ADD\"/]:::attr\n        A_M2_10[/\"b.条件伤害减免值 COND_HURT_RED\"/]:::attr\n        A_M2_1 -.-> M2_DEF\n        A_M2_2 -.-> M2_DEF\n        A_M2_3 -.-> M2_DEF\n        A_M2_4 -.-> M2_DEF\n        A_M2_5 -.-> M2_DEF\n        M2_DEF --> M2\n        A_M2_6 -.-> M2\n        A_M2_7 -.-> M2\n        A_M2_8 -.-> M2\n        A_M2_9 -.-> M2\n        A_M2_10 -.-> M2\n    \n        M3[\"乘区3 · 技能系数<br/>输出 ＝ 乘区2输出 × 技能系数 ＋ 技能固定值\"]:::formula\n        A_M3_1[/\"技能系数 / 来自技能配置 / 万分比\"/]:::attr\n        A_M3_2[/\"技能固定值 / 来自技能配置 / 整数\"/]:::attr\n        A_M3_1 -.-> M3\n        A_M3_2 -.-> M3\n    \n        M1 --> M2\n        M2 --> M3\n    end\n    \n    %% =================================================\n    %% Region 2\n    %% =================================================\n    subgraph R2[\"💥 Region 2 · 化解会心区\"]\n        direction LR\n    \n        CRIT_RATE[\"计算 ¤计算会心率<br/>¤计算会心率 ＝ F会心率❪MAX❪a.会心值 , 0❫❫ ＋ a.会心率\"]:::interim\n        CRIT_BRANCH{\"掷骰判定 / 是否触发会心？\"}:::branch\n        A_CR_1[/\"a.会心值 CRIT\"/]:::attr\n        A_CR_2[/\"a.会心率 CRIT_PER\"/]:::attr\n        A_CR_1 -.-> CRIT_RATE\n        A_CR_2 -.-> CRIT_RATE\n        CRIT_RATE --> CRIT_BRANCH\n    \n        M4_YES[\"乘区4 · 会心触发<br/>输出 ＝ 乘区3输出 × ❮ 1.5 ＋ F会心倍率❪a.会伤值 − b.会伤减免值❫ ＋ a.会伤加成 − b.会伤减免 ❯\"]:::formula\n        M4_NO[\"乘区4 · 未触发<br/>输出 ＝ 乘区3输出 × 1\"]:::formulaPass\n        A_M4_1[/\"a.会伤值 CRIT_DMG\"/]:::attr\n        A_M4_2[/\"b.会伤减免值\"/]:::attr\n        A_M4_3[/\"a.会伤加成 CRIT_DMG_PER\"/]:::attr\n        A_M4_4[/\"b.会伤减免\"/]:::attr\n        A_M4_1 -.-> M4_YES\n        A_M4_2 -.-> M4_YES\n        A_M4_3 -.-> M4_YES\n        A_M4_4 -.-> M4_YES\n    \n        CRIT_BRANCH -->|是| M4_YES\n        CRIT_BRANCH -->|否| M4_NO\n    \n        DODGE_BRANCH{\"伤害是否为直接伤害 且 触发化解？\"}:::branch\n    \n        M5_YES[\"乘区5 · 化解触发<br/>¤计算化解率 ＝ F化解率❪MAX❪b.化解值 − a.精通值 , 0❫❫ ＋ b.化解率 − a.精通率<br/>输出 ＝ 乘区4输出 × MAX❮ 0.5 − F化解倍率❪b.化解效果值 − b.精通效果值❫ − b.化解效果率 ＋ a.精通效果率 , 0.25 封底25％ ❯\"]:::formula\n        M5_NO[\"乘区5 · 不化解<br/>输出 ＝ 乘区4输出 × 1\"]:::formulaPass\n        A_M5_1[/\"b.化解值\"/]:::attr\n        A_M5_2[/\"a.精通值（化解对抗）\"/]:::attr\n        A_M5_3[/\"b.化解率\"/]:::attr\n        A_M5_4[/\"a.精通率\"/]:::attr\n        A_M5_5[/\"b.化解效果值\"/]:::attr\n        A_M5_6[/\"b.精通效果值\"/]:::attr\n        A_M5_7[/\"b.化解效果率\"/]:::attr\n        A_M5_8[/\"a.精通效果率\"/]:::attr\n        A_M5_1 -.-> M5_YES\n        A_M5_2 -.-> M5_YES\n        A_M5_3 -.-> M5_YES\n        A_M5_4 -.-> M5_YES\n        A_M5_5 -.-> M5_YES\n        A_M5_6 -.-> M5_YES\n        A_M5_7 -.-> M5_YES\n        A_M5_8 -.-> M5_YES\n    \n        M4_YES --> DODGE_BRANCH\n        M4_NO --> DODGE_BRANCH\n        DODGE_BRANCH -->|是| M5_YES\n        DODGE_BRANCH -->|否| M5_NO\n    end\n    \n    %% =================================================\n    %% Region 3\n    %% =================================================\n    subgraph R3[\"🌀 Region 3 · 属性增伤区\"]\n        direction LR\n    \n        M6[\"乘区6 · 伤害加深<br/>输出 ＝ 上一乘区 × ❪1 ＋ a.伤害加深❫\"]:::formula\n        A_M6[/\"a.伤害加深\"/]:::attr\n        A_M6 -.-> M6\n    \n        M7[\"乘区7 · 伤害弱化<br/>输出 ＝ 乘区6 × ❮1 − MIN❪b.受伤弱化 , 0.75 封顶75％❫❯\"]:::formula\n        A_M7[/\"b.受伤弱化\"/]:::attr\n        A_M7 -.-> M7\n    \n        M8[\"乘区8 · 威压<br/>输出 ＝ 乘区7 × ❪a.威压 ／ b.威压❫<br/>※ 等级压制机制\"]:::formula\n        A_M8_1[/\"a.威压\"/]:::attr\n        A_M8_2[/\"b.威压\"/]:::attr\n        A_M8_1 -.-> M8\n        A_M8_2 -.-> M8\n    \n        M9[\"乘区9 · 主类型增伤<br/>输出 ＝ 乘区8 × ❮1 ＋ Σ❪是否对应主类 ？ a.对应增伤 ： 0❫❯\"]:::formula\n        A_M9_1[/\"a.功法技主类增伤\"/]:::attr\n        A_M9_2[/\"a.心法主类增伤\"/]:::attr\n        A_M9_3[/\"a.神识技主类增伤\"/]:::attr\n        A_M9_4[/\"a.本命法宝技主类增伤\"/]:::attr\n        A_M9_5[/\"...等所有主类增伤\"/]:::attr\n        A_M9_1 -.-> M9\n        A_M9_2 -.-> M9\n        A_M9_3 -.-> M9\n        A_M9_4 -.-> M9\n        A_M9_5 -.-> M9\n    \n        M10[\"乘区10 · 子类型增伤<br/>输出 ＝ 乘区9 × ❮1 ＋ Σ❪是否对应子类 ？ a.对应增伤 ： 0❫❯\"]:::formula\n        A_M10_1[/\"a.招式子类增伤\"/]:::attr\n        A_M10_2[/\"a.奇术子类增伤\"/]:::attr\n        A_M10_3[/\"a.神通子类增伤\"/]:::attr\n        A_M10_4[/\"a.驭兽技子类增伤\"/]:::attr\n        A_M10_5[/\"...等所有子类增伤\"/]:::attr\n        A_M10_1 -.-> M10\n        A_M10_2 -.-> M10\n        A_M10_3 -.-> M10\n        A_M10_4 -.-> M10\n        A_M10_5 -.-> M10\n    \n        M11[\"乘区11 · 基础类型增伤<br/>＜直接伤害＞ 乘区10 × ❪1 ＋ a.直接伤害加深❫ ／ ＜间接伤害＞ 乘区10 × ❪1 ＋ a.间接伤害加深❫\"]:::formula\n        A_M11_1[/\"a.直接伤害加深\"/]:::attr\n        A_M11_2[/\"a.间接伤害加深\"/]:::attr\n        A_M11_1 -.-> M11\n        A_M11_2 -.-> M11\n    \n        M12[\"乘区12 · 技能标签增伤<br/>输出 ＝ 乘区11 × ❪1 ＋ ¤标签增伤率❫<br/>※ 标签 ／ 飞弹 ／ 连击 ／ 叠伤 ／ 清算 ／ 标记 ...\"]:::formula\n        A_M12[/\"¤标签增伤率 ＝ Σ匹配标签的增伤率<br/>例 a.飞弹标签增伤率 ／ a.连击标签增伤率 ...\"/]:::attr\n        A_M12 -.-> M12\n    \n        M13[\"乘区13 · 五行增伤<br/>输出 ＝ 乘区12 × ❮1 ＋ Σ❪是否对应五行 ？ F五行增伤❪a.五行增伤值❫ ＋ a.五行增伤率 ： 0❫ ＋ ❪是否任意五行 ？ F五行增伤❪a.全五行增伤值❫ ＋ a.全五行增伤率 ： 0❫❯\"]:::formula\n        A_M13_1[/\"a.金／木／水／火／土 五行增伤值\"/]:::attr\n        A_M13_2[/\"a.金／木／水／火／土 五行增伤率\"/]:::attr\n        A_M13_3[/\"a.全五行增伤值／率\"/]:::attr\n        A_M13_1 -.-> M13\n        A_M13_2 -.-> M13\n        A_M13_3 -.-> M13\n    \n        M14[\"乘区14 · 五行减伤<br/>输出 ＝ 乘区13 × ❮1 − MIN❪Σ五行减伤项 , 0.75 封顶75％❫❯\"]:::formula\n        A_M14_1[/\"b.金／木／水／火／土 五行减伤值\"/]:::attr\n        A_M14_2[/\"b.金／木／水／火／土 五行减伤率\"/]:::attr\n        A_M14_3[/\"b.全五行减伤值／率\"/]:::attr\n        A_M14_1 -.-> M14\n        A_M14_2 -.-> M14\n        A_M14_3 -.-> M14\n    \n        M15[\"乘区15 · 异常状态增伤<br/>输出 ＝ 乘区14 × ❮1 ＋ Σ❪对方对应异常 ？ a.对应异常增伤率 ： 0❫ ＋ ❪对方任意异常 ？ a.异常增伤率 ： 0❫❯\"]:::formula\n        A_M15_1[/\"a.中毒异常增伤率\"/]:::attr\n        A_M15_2[/\"a.眩晕异常增伤率\"/]:::attr\n        A_M15_3[/\"a.减速异常增伤率\"/]:::attr\n        A_M15_4[/\"a.异常增伤率 / 全异常通用\"/]:::attr\n        A_M15_1 -.-> M15\n        A_M15_2 -.-> M15\n        A_M15_3 -.-> M15\n        A_M15_4 -.-> M15\n    \n        M6 --> M7 --> M8 --> M9 --> M10 --> M11 --> M12 --> M13 --> M14 --> M15\n    end\n    \n    %% =================================================\n    %% Region 4\n    %% =================================================\n    subgraph R4[\"✨ Region 4 · 战斗效果增伤区\"]\n        direction LR\n    \n        M16[\"乘区16 · 技能效果·被动增伤<br/>输出 ＝ 乘区15 × ❪1 ＋ a.技能效果·被动增伤率❫\"]:::formula\n        A_M16[/\"a.技能效果·被动增伤率\"/]:::attr\n        A_M16 -.-> M16\n    \n        M17[\"乘区17 · 技能效果·被动减伤<br/>输出 ＝ 乘区16 × ❮1 − MIN❪b.技能效果·被动减伤率 , 0.75 封顶75％❫❯\"]:::formula\n        A_M17[/\"b.技能效果·被动减伤率\"/]:::attr\n        A_M17 -.-> M17\n    \n        M18[\"乘区18 · 主动增伤 攻方<br/>输出 ＝ 乘区17 × ❮1 ＋ MAX❪a.主动技能自身增伤 − a.对方伤害降低 , −0.75 封底❫❯\"]:::formula\n        A_M18_1[/\"a.技能效果·主动技能自身增伤 / 临时buff\"/]:::attr\n        A_M18_2[/\"a.技能效果·对方伤害降低 / 挂在自己身上的虚弱debuff\"/]:::attr\n        A_M18_1 -.-> M18\n        A_M18_2 -.-> M18\n    \n        M19[\"乘区19 · 主动减伤 守方<br/>输出 ＝ 乘区18 × ❮1 ＋ MAX❪b.对方受到伤害增加 − b.主动技能自身减伤 , −0.75 封底❫❯\"]:::formula\n        A_M19_1[/\"b.技能效果·对方受到伤害增加 / 易伤debuff\"/]:::attr\n        A_M19_2[/\"b.技能效果·主动技能自身减伤 / 守方临时减伤buff\"/]:::attr\n        A_M19_1 -.-> M19\n        A_M19_2 -.-> M19\n    \n        M20[\"乘区20 · 局内条件增伤<br/>输出 ＝ 乘区19 × ❪1 ＋ a.局内条件增伤❫\"]:::formula\n        A_M20[/\"a.局内条件增伤\"/]:::attr\n        A_M20 -.-> M20\n    \n        M21[\"乘区21 · 战斗道具增伤<br/>输出 ＝ 乘区20 × ❪1 ＋ a.技能效果·战斗道具增伤❫\"]:::formula\n        A_M21[/\"a.技能效果·战斗道具增伤\"/]:::attr\n        A_M21 -.-> M21\n    \n        M22[\"乘区22 · 单位类型增伤<br/>输出 ＝ ※敌人类型对应增伤 × MIN❮0.75 , ❪1 − 我为妖王 ？ b.受妖王伤害降低 ： 0 − 我为修士 ？ b.受修士伤害降低 ： 0 − 我为召唤物 ？ b.受召唤物伤害降低 ： 0 ...❫❯\"]:::formula\n        A_M22_1[/\"a.对妖王 ／ 对修士 ／ 对召唤物增伤 ...\"/]:::attr\n        A_M22_2[/\"b.受妖王 ／ 受修士伤害降低 ...\"/]:::attr\n        A_M22_1 -.-> M22\n        A_M22_2 -.-> M22\n    \n        M23[\"乘区23 · 玩法类型增伤<br/>＜演武＞ 乘区22 × ❮1 ＋ MAX❪a.演武伤害增加 − a.演武伤害降低 , −0.75❫❯ ／ ＜小秘境＞ ＜大秘境＞ ＜爬塔＞ 同构\"]:::formula\n        A_M23_1[/\"a.玩法·演武伤害增加／降低\"/]:::attr\n        A_M23_2[/\"a.玩法·小秘境伤害增加／降低\"/]:::attr\n        A_M23_3[/\"a.玩法·大秘境伤害增加／降低\"/]:::attr\n        A_M23_4[/\"a.玩法·爬塔伤害增加／降低\"/]:::attr\n        A_M23_1 -.-> M23\n        A_M23_2 -.-> M23\n        A_M23_3 -.-> M23\n        A_M23_4 -.-> M23\n    \n        M24[\"乘区24 · 最终伤害增加<br/>输出 ＝ 乘区23 × ❪1 ＋ a.最终伤害增加❫\"]:::formula\n        A_M24[/\"a.最终伤害增加 / 最稀有最强\"/]:::attr\n        A_M24 -.-> M24\n    \n        M25[\"乘区25 · 最终伤害减免<br/>最终伤害 ＝ 乘区24 × ❮1 − MIN❪b.最终伤害减免 , 0.75 封顶75％❫❯\"]:::formula\n        A_M25[/\"b.最终伤害减免 / 守方终极减伤\"/]:::attr\n        A_M25 -.-> M25\n    \n        M16 --> M17 --> M18 --> M19 --> M20 --> M21 --> M22 --> M23 --> M24 --> M25\n    end\n    \n    END([💥 最终伤害值 / 显示在被攻击者头顶]):::endNode\n    \n    START --> M1\n    M3 --> CRIT_RATE\n    M5_YES --> M6\n    M5_NO --> M6\n    M15 --> M16\n    M25 --> END\n    \n    classDef start fill:#2E86AB,stroke:#1E5E7C,color:#fff,stroke-width:3px\n    classDef endNode fill:#06A77D,stroke:#04644B,color:#fff,stroke-width:3px\n    classDef formula fill:#FFF4D6,stroke:#D4A017,color:#000,stroke-width:2px\n    classDef formulaPass fill:#F0F0F0,stroke:#888,color:#444,stroke-width:1px,stroke-dasharray: 5 5\n    classDef interim fill:#FFE4B5,stroke:#CD853F,color:#000,stroke-width:1px\n    classDef branch fill:#FFB347,stroke:#CC7722,color:#000,stroke-width:2px\n    classDef attr fill:#E8F0FE,stroke:#4A90E2,color:#1A3A5C,stroke-width:1px\n"},{"name":"Demo · 战斗循环示例","code":"%% title: Demo · 战斗循环示例\ngraph LR\n    A[战斗开始] --> B{技能可用?}\n    B -- 是 --> C[释放技能]\n    B -- 否 --> D[普通攻击]\n    C --> E[结算伤害]\n    D --> E\n    E --> F{敌人存活?}\n    F -- 是 --> B\n    F -- 否 --> G[战斗结束]\n"}];
   </script>
 
   <!-- ========== APP LOGIC ========== -->
@@ -2944,7 +3393,10 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
       DRAFT: 'mermaid-studio.draft.v1',
       THEME: 'mermaid-studio.theme.v2',
       LAYOUT: 'mermaid-studio.layout.v1',
-      COLLAPSED: 'mermaid-studio.collapsed.v1'
+      COLLAPSED: 'mermaid-studio.collapsed.v1',
+      AI_CONFIG: 'mermaid-studio.ai.config.v1',
+      AI_CHAT: 'mermaid-studio.ai.chat.v1',
+      AI_PANEL: 'mermaid-studio.ai.panel.v1'
     };
 
     function safeGet(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
@@ -3493,6 +3945,7 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
     var panStart = { x: 0, y: 0, tx: 0, ty: 0 };
     canvasEl.addEventListener('mousedown', function (e) {
       if (e.button !== 0) return;
+      if (isResizing || aiResizing) return;   // don't pan while a resizer drag is active
       if (!diagramEl.querySelector('svg')) return;
       // Don't start panning when clicking the expand-tab
       if (e.target && e.target.closest && e.target.closest('.expand-tab')) return;
@@ -3730,7 +4183,7 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
     }
     var isResizing = false;
     resizerEl.addEventListener('mousedown', function (e) {
-      if (workspaceEl.classList.contains('code-collapsed')) return;
+      if (workspaceEl.classList.contains('code-collapsed') || isPanning || aiResizing) return;
       isResizing = true;
       resizerEl.classList.add('is-dragging');
       workspaceEl.style.transition = 'none';
@@ -3823,6 +4276,607 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
       updateGutter(); saveDraft(); scheduleRender();
     });
 
+    // ====================================================================
+    //  AI 助手：用自然语言生成 Mermaid 图表
+    // ====================================================================
+    var AI_PRESETS = {
+      deepseek: { protocol: 'openai', baseURL: 'https://api.deepseek.com/v1',                       model: 'deepseek-chat' },
+      openai:   { protocol: 'openai', baseURL: 'https://api.openai.com/v1',                         model: 'gpt-4o-mini' },
+      claude:   { protocol: 'claude', baseURL: 'https://api.anthropic.com/v1',                      model: 'claude-3-5-sonnet-latest' },
+      qwen:     { protocol: 'openai', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+      custom:   { protocol: 'openai', baseURL: '',                                                   model: '' }
+    };
+
+    // 高置信度的 PlantUML / 非 Mermaid 标志，命中即判为非法（mermaid.parse 才是最终校验，这里只为给出更清晰的报错）
+    var PLANTUML_MARKERS = /@start\w+|@end\w+|(^|\n)\s*if\s*\(.*\)\s*then\b|(^|\n)\s*:[^;\n]+;\s*(\n|$)|(^|\n)\s*note\s+(left|right|top|bottom)\s*:/i;
+
+    var AI_SYSTEM_PROMPT =
+      '你是一个 Mermaid 图表生成助手，内置于一个离线的 Mermaid 绘图工具里。\n' +
+      '\n' +
+      '【最重要的硬性约束 · 必须严格遵守】\n' +
+      '· 你只能输出 Mermaid 语法，【绝对禁止】输出 PlantUML 或任何其它绘图语言。\n' +
+      '· 【严禁】出现这些 PlantUML 写法：@startuml / @enduml / @startmindmap / start / stop / :动作; / if (...) then (是) ... else (否) ... endif / repeat / fork / note left: / note right:。它们在本工具里会直接报错"No diagram type detected"，无法渲染。\n' +
+      '· 你输出的代码，第一个非空行【必须】是合法的 Mermaid 图表类型声明，只能是以下之一开头：\n' +
+      '  graph TD / graph LR / flowchart TD、sequenceDiagram、classDiagram、stateDiagram-v2、erDiagram、gantt、pie、journey、gitGraph、mindmap、timeline、quadrantChart。\n' +
+      '\n' +
+      '【类型映射 · 用户说什么 → 你用哪种 Mermaid 图】\n' +
+      '· 流程 / 活动 / 步骤 / 业务流程 / 判断分支 / 循环  → 用 flowchart：graph TD（判断用菱形 A{条件?}，分支用 -- 是 --> / -- 否 -->，循环用箭头指回）。\n' +
+      '· 交互 / 调用 / 时序 / 接口请求            → sequenceDiagram\n' +
+      '· 类 / 对象 / 继承关系                    → classDiagram\n' +
+      '· 状态 / 状态机 / 生命周期                 → stateDiagram-v2\n' +
+      '· 实体 / 数据库表关系                     → erDiagram\n' +
+      '· 排期 / 甘特                            → gantt；占比 → pie；脑图 → mindmap；时间线 → timeline。\n' +
+      '\n' +
+      '【其它规则】\n' +
+      '1. 必须使用 Mermaid v10.9.1 兼容语法（不要用 v11+ 才有的特性）。\n' +
+      '2. 始终把图表代码放进一个 ```mermaid 代码块，并且整个回复只包含一个 mermaid 代码块。\n' +
+      '3. 代码块前可用一两句话简要说明，不要长篇大论。\n' +
+      '4. 节点 / 标签 / 文案默认用中文，除非用户明确要英文。\n' +
+      '5. 节点文本中含括号、引号、冒号、斜杠、百分号等特殊字符时，用双引号把整段文本包起来，例如 A["下单(含优惠)"]、B["血量<10%"]。不要在标签里使用未转义的 \\n，需要换行用 <br>。\n' +
+      '6. 如果用户是在已有图基础上修改，请基于"当前画布代码"输出修改后的【完整】代码，不要只给片段。\n' +
+      '7. 确保语法严谨可直接渲染：箭头方向正确、引号闭合、缩进一致、节点 ID 用字母/数字（中文放到 [] 标签里）。\n' +
+      '8. 输出前在心里默渲染一遍，确认这是能被 Mermaid v10.9.1 解析的代码，再给出。';
+
+    var stageEl = $('stage');
+    var aiPanel = $('ai-panel');
+    var aiResizer = $('ai-resizer');
+    var aiMessagesEl = $('ai-messages');
+    var aiInput = $('ai-input');
+    var aiSendBtn = $('ai-send');
+    var aiModelTag = $('ai-model-tag');
+    var aiModelText = $('ai-model-text');
+    var aiModalScrim = $('ai-modal-scrim');
+    var aiToggleBtn = $('ai-toggle');
+
+    var aiMessages = [];     // [{role:'user'|'assistant', content:'...'}]
+    var aiBusy = false;
+
+    function getAIConfig() {
+      try { return JSON.parse(safeGet(STORAGE.AI_CONFIG) || 'null') || null; } catch (_) { return null; }
+    }
+    function isConfigReady(cfg) {
+      return !!(cfg && cfg.baseURL && cfg.apiKey && cfg.model && cfg.protocol);
+    }
+    function updateModelTag() {
+      var cfg = getAIConfig();
+      if (isConfigReady(cfg)) {
+        aiModelTag.classList.add('ready');
+        aiModelText.textContent = cfg.model;
+        aiModelTag.title = (cfg.baseURL || '') + ' · 点击修改';
+      } else {
+        aiModelTag.classList.remove('ready');
+        aiModelText.textContent = '未配置模型 · 点击设置';
+        aiModelTag.title = '点击配置模型';
+      }
+    }
+
+    // ---------- Chat persistence & rendering ----------
+    function loadChat() {
+      try {
+        var raw = JSON.parse(safeGet(STORAGE.AI_CHAT) || '[]');
+        if (Array.isArray(raw)) aiMessages = raw.filter(function (m) { return m && m.role && typeof m.content === 'string'; });
+      } catch (_) { aiMessages = []; }
+    }
+    function saveChat() {
+      try { safeSet(STORAGE.AI_CHAT, JSON.stringify(aiMessages.slice(-40))); } catch (_) {}
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // Turn assistant/user text into safe HTML; fenced code blocks become <pre> with an "apply" button.
+    function formatMessage(text) {
+      var html = '';
+      var re = /```([a-zA-Z]*)\n?([\s\S]*?)```/g;
+      var last = 0, m;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) html += '<span>' + escapeHtml(text.slice(last, m.index)).replace(/\n/g, '<br>') + '</span>';
+        var lang = (m[1] || '').toLowerCase();
+        var code = m[2].replace(/\s+$/, '');
+        var isMermaid = lang === 'mermaid' || lang === '';
+        html += '<div class="ai-code-block">';
+        if (isMermaid) {
+          html += '<button class="ai-apply" data-code="' + escapeHtml(code) + '">应用到画布并渲染</button>';
+        }
+        html += '<pre>' + escapeHtml(code) + '</pre></div>';
+        last = re.lastIndex;
+      }
+      if (last < text.length) html += '<span>' + escapeHtml(text.slice(last)).replace(/\n/g, '<br>') + '</span>';
+      return html || '<span></span>';
+    }
+
+    function renderChat() {
+      if (aiMessages.length === 0) {
+        aiMessagesEl.innerHTML =
+          '<div class="ai-empty">' +
+          '<div class="pane-mark">✦</div>' +
+          '<p>把想画的图用一句话说出来<br>我来生成 Mermaid 代码并自动渲染</p>' +
+          '<div class="ai-suggest">' +
+          '<button class="ai-chip">画一个用户注册登录的流程图</button>' +
+          '<button class="ai-chip">用时序图描述前端调用后端登录接口的过程</button>' +
+          '<button class="ai-chip">画一个电商订单状态机：待支付→已支付→已发货→已收货</button>' +
+          '</div></div>';
+        return;
+      }
+      var out = '';
+      for (var i = 0; i < aiMessages.length; i++) {
+        var msg = aiMessages[i];
+        var roleLabel = msg.role === 'user' ? '你' : 'AI';
+        out += '<div class="ai-msg ' + msg.role + '" data-idx="' + i + '">' +
+               '<span class="ai-msg-role">' + roleLabel + '</span>' +
+               '<div class="ai-msg-body">' + formatMessage(msg.content) + '</div>' +
+               '</div>';
+      }
+      aiMessagesEl.innerHTML = out;
+      aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight;
+    }
+
+    // Live-update a single streaming message body without re-rendering the whole list.
+    function updateStreamingBody(idx, streaming) {
+      var node = aiMessagesEl.querySelector('.ai-msg[data-idx="' + idx + '"] .ai-msg-body');
+      if (!node) return;
+      node.innerHTML = formatMessage(aiMessages[idx].content);
+      if (streaming) node.classList.add('ai-cursor'); else node.classList.remove('ai-cursor');
+      aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight;
+    }
+
+    // ---------- Extract mermaid code and push to canvas ----------
+    function extractMermaid(text) {
+      var blocks = [];
+      var re = /```([a-zA-Z]*)\n?([\s\S]*?)```/g, m;
+      while ((m = re.exec(text)) !== null) {
+        blocks.push({ lang: (m[1] || '').toLowerCase(), code: m[2].replace(/\s+$/, '') });
+      }
+      // prefer an explicit ```mermaid block, else the last fenced block
+      var mer = null;
+      for (var i = blocks.length - 1; i >= 0; i--) {
+        if (blocks[i].lang === 'mermaid') { mer = blocks[i].code; break; }
+      }
+      if (!mer && blocks.length) mer = blocks[blocks.length - 1].code;
+      return mer;
+    }
+
+    function applyMermaidToCanvas(code) {
+      if (!code) return;
+      codeEl.value = code;
+      saveDraft();
+      updateGutter();
+      autoFitOnNextRender = true;
+      scheduleRender();
+      if (window.innerWidth > 900 && workspaceEl.classList.contains('code-collapsed')) {
+        // keep code visible so user can tweak the generated code
+        setCollapsed(false);
+      }
+    }
+
+    // ---------- HTTP / streaming ----------
+    function joinURL(base, path) {
+      return String(base || '').replace(/\/+$/, '') + path;
+    }
+    function httpErr(status, body) {
+      var detail = '';
+      try {
+        var j = JSON.parse(body);
+        detail = (j.error && (j.error.message || j.error.type)) || j.message || '';
+      } catch (_) { detail = (body || '').slice(0, 300); }
+      return new Error('HTTP ' + status + (detail ? ' · ' + detail : ''));
+    }
+
+    // Read an SSE response line by line, calling onData(parsedJSON) for each `data:` payload.
+    function readSSE(resp, onData) {
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return;
+          buf += decoder.decode(r.value, { stream: true });
+          var idx;
+          while ((idx = buf.indexOf('\n')) >= 0) {
+            var line = buf.slice(0, idx).replace(/\r$/, '');
+            buf = buf.slice(idx + 1);
+            line = line.trim();
+            if (!line || line.charAt(0) === ':') continue;
+            if (line.indexOf('data:') !== 0) continue;
+            var data = line.slice(5).trim();
+            if (data === '[DONE]') return;
+            try { onData(JSON.parse(data)); } catch (_) {}
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }
+
+    function callOpenAI(cfg, apiMessages, onDelta) {
+      var body = {
+        model: cfg.model,
+        messages: [{ role: 'system', content: AI_SYSTEM_PROMPT }].concat(apiMessages),
+        stream: true,
+        temperature: 0.3
+      };
+      return fetch(joinURL(cfg.baseURL, '/chat/completions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+        body: JSON.stringify(body)
+      }).then(function (resp) {
+        if (!resp.ok) return resp.text().then(function (t) { throw httpErr(resp.status, t); });
+        var ct = resp.headers.get('content-type') || '';
+        if (ct.indexOf('event-stream') >= 0 && resp.body && resp.body.getReader) {
+          return readSSE(resp, function (obj) {
+            var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
+            if (d && d.content) onDelta(d.content);
+          });
+        }
+        return resp.json().then(function (j) {
+          var c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+          if (c) onDelta(c);
+        });
+      });
+    }
+
+    function callClaude(cfg, apiMessages, onDelta) {
+      var body = {
+        model: cfg.model,
+        max_tokens: 4096,
+        system: AI_SYSTEM_PROMPT,
+        messages: apiMessages,
+        stream: true
+      };
+      return fetch(joinURL(cfg.baseURL, '/messages'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': cfg.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify(body)
+      }).then(function (resp) {
+        if (!resp.ok) return resp.text().then(function (t) { throw httpErr(resp.status, t); });
+        var ct = resp.headers.get('content-type') || '';
+        if (ct.indexOf('event-stream') >= 0 && resp.body && resp.body.getReader) {
+          return readSSE(resp, function (obj) {
+            if (obj.type === 'content_block_delta' && obj.delta && obj.delta.text) onDelta(obj.delta.text);
+          });
+        }
+        return resp.json().then(function (j) {
+          var txt = '';
+          if (j.content && j.content.length) {
+            for (var i = 0; i < j.content.length; i++) { if (j.content[i].text) txt += j.content[i].text; }
+          }
+          if (txt) onDelta(txt);
+        });
+      });
+    }
+
+    function corsHint(err) {
+      var msg = (err && err.message) || '';
+      if (/Failed to fetch|NetworkError|load failed/i.test(msg) || msg === 'TypeError') {
+        return '\n\n（提示：这通常是浏览器跨域 CORS 限制——file:// 直连云端 API 时，部分服务商不返回允许跨域的响应头。' +
+               '可换用支持跨域的服务商 / 本地模型(如 Ollama)，或参考 README 用浏览器扩展、本地代理等方式绕过。）';
+      }
+      return '';
+    }
+
+    // ---------- Send ----------
+    function buildApiMessages() {
+      var msgs = [];
+      var current = (codeEl.value || '').trim();
+      if (current) {
+        msgs.push({ role: 'user', content: '【当前画布上的 Mermaid 代码】\n```mermaid\n' + current + '\n```\n（如果我下面的请求是修改它，请基于这份代码改；否则忽略它。）' });
+        msgs.push({ role: 'assistant', content: '好的，我已了解当前画布上的代码。' });
+      }
+      // recent conversation (cap to keep token usage sane)
+      var recent = aiMessages.slice(-12);
+      for (var i = 0; i < recent.length; i++) {
+        msgs.push({ role: recent[i].role, content: recent[i].content });
+      }
+      return msgs;
+    }
+
+    function setAIBusy(busy) {
+      aiBusy = busy;
+      aiSendBtn.disabled = busy;
+      aiSendBtn.textContent = busy ? '生成中…' : '生成';
+    }
+
+    // ---------- Validate generated code with Mermaid's own parser; auto-repair if invalid ----------
+    var MAX_REPAIR = 2;
+
+    function validateMermaid(code) {
+      if (!code || !window.mermaid || typeof window.mermaid.parse !== 'function') {
+        return Promise.resolve({ ok: false, error: 'Mermaid 库不可用或代码为空' });
+      }
+      if (PLANTUML_MARKERS.test(code)) {
+        return Promise.resolve({ ok: false, error: '检测到 PlantUML 写法（如 @startuml / start / :动作; / if-then-else-endif / note right:），这不是 Mermaid 语法，无法渲染。' });
+      }
+      try {
+        return Promise.resolve(window.mermaid.parse(code, { suppressErrors: false }))
+          .then(function () { return { ok: true }; })
+          .catch(function (e) { return { ok: false, error: (e && e.message) || String(e) }; });
+      } catch (e) {
+        return Promise.resolve({ ok: false, error: (e && e.message) || String(e) });
+      }
+    }
+
+    function buildRepairPrompt(error) {
+      return '你上一条回复里的 Mermaid 代码无法被 Mermaid v10.9.1 解析。报错信息：\n' +
+        (error || '(未知)').slice(0, 400) + '\n\n' +
+        '请修正它，并且【只输出修正后的完整 Mermaid 代码】放在一个 ```mermaid 代码块里，不要解释。\n' +
+        '再次强调硬性要求：\n' +
+        '· 必须是 Mermaid 语法，不是 PlantUML——绝对不要出现 @startuml/@enduml/start/stop/:动作;/if(...)then(是)...else(否)...endif/repeat/note right: 这些写法。\n' +
+        '· 第一行必须是合法的 Mermaid 类型声明：graph TD / flowchart LR / sequenceDiagram / classDiagram / stateDiagram-v2 / erDiagram / gantt / pie / mindmap 等。\n' +
+        '· 含特殊字符的节点文本用双引号包起来；标签换行用 <br> 而不是 \\n。';
+    }
+
+    // Recursively validate → if invalid, ask the model to repair, up to MAX_REPAIR rounds.
+    // Only valid code is ever pushed to the canvas.
+    function validateAndApply(code, msgIdx, cfg, baseApiMessages, attempt) {
+      return validateMermaid(code).then(function (res) {
+        if (res.ok) {
+          applyMermaidToCanvas(code);
+          toast(attempt > 0 ? ('已自动修正并渲染（修复 ' + attempt + ' 次）') : '已生成并渲染', 'success');
+          return;
+        }
+        if (attempt >= MAX_REPAIR) {
+          aiMessages[msgIdx].content += '\n\n> ⚠️ 这段代码未能通过 Mermaid 校验：' + (res.error || '').slice(0, 140) +
+            '\n> 已自动尝试修复 ' + MAX_REPAIR + ' 次仍未通过，**未应用到画布**（避免覆盖你现有的图）。可以再发一次、或换种描述试试。';
+          updateStreamingBody(msgIdx, false);
+          toast('生成的代码仍无法渲染，已放弃自动修复', 'error');
+          return;
+        }
+        // ----- repair round -----
+        // Rewrite the SAME assistant bubble in place (don't append a new one) so the conversation
+        // keeps strict user/assistant alternation — Claude's API rejects consecutive same-role messages.
+        setStatus('pending', 'AI 自动修复中… (' + (attempt + 1) + '/' + MAX_REPAIR + ')');
+        var repairMsgs = baseApiMessages.concat([
+          { role: 'assistant', content: aiMessages[msgIdx].content },   // the broken reply (captured before we clear it)
+          { role: 'user', content: buildRepairPrompt(res.error) }
+        ]);
+        aiMessages[msgIdx].content = '';
+        updateStreamingBody(msgIdx, true);
+        var caller = cfg.protocol === 'claude' ? callClaude : callOpenAI;
+        return caller(cfg, repairMsgs, function (delta) {
+          aiMessages[msgIdx].content += delta;
+          updateStreamingBody(msgIdx, true);
+        }).then(function () {
+          updateStreamingBody(msgIdx, false);
+          var newCode = extractMermaid(aiMessages[msgIdx].content);
+          return validateAndApply(newCode || code, msgIdx, cfg, baseApiMessages, attempt + 1);
+        });
+      });
+    }
+
+    function sendAIMessage() {
+      if (aiBusy) return;
+      var cfg = getAIConfig();
+      if (!isConfigReady(cfg)) { toast('请先配置模型', 'error'); openAISettings(); return; }
+      var text = (aiInput.value || '').trim();
+      if (!text) return;
+
+      aiMessages.push({ role: 'user', content: text });
+      aiInput.value = '';
+      autosizeInput();
+      var apiMessages = buildApiMessages();   // built AFTER pushing user msg
+      aiMessages.push({ role: 'assistant', content: '' });
+      var asstIdx = aiMessages.length - 1;
+      renderChat();
+      updateStreamingBody(asstIdx, true);
+      setAIBusy(true);
+      setStatus('pending', 'AI 生成中…');
+
+      var caller = cfg.protocol === 'claude' ? callClaude : callOpenAI;
+      var gotAny = false;
+      caller(cfg, apiMessages, function (delta) {
+        gotAny = true;
+        aiMessages[asstIdx].content += delta;
+        updateStreamingBody(asstIdx, true);
+      }).then(function () {
+        updateStreamingBody(asstIdx, false);
+        if (!gotAny && !aiMessages[asstIdx].content) {
+          aiMessages[asstIdx].content = '（没有收到模型返回的内容，请检查模型名称或接口协议是否正确。）';
+          updateStreamingBody(asstIdx, false);
+          return;
+        }
+        var code = extractMermaid(aiMessages[asstIdx].content);
+        if (!code) { toast('未在回复中找到 Mermaid 代码', 'error'); return; }
+        return validateAndApply(code, asstIdx, cfg, apiMessages, 0);
+      }).catch(function (err) {
+        aiMessages[asstIdx].content += (aiMessages[asstIdx].content ? '\n\n' : '') + '⚠️ 调用失败：' + ((err && err.message) || err) + corsHint(err);
+        updateStreamingBody(asstIdx, false);
+        toast('AI 调用失败', 'error');
+      }).then(function () {
+        setAIBusy(false);
+        setStatus('ok', '就绪');
+        saveChat();
+      });
+    }
+
+    // ---------- AI panel: expand / collapse (same layer, no overlay) ----------
+    var AI_PANEL_MIN = 280, AI_PANEL_MAX = 720, AI_PANEL_DEFAULT = 400;
+    var aiPanelWidth = AI_PANEL_DEFAULT;
+
+    function loadPanelState() {
+      try { return JSON.parse(safeGet(STORAGE.AI_PANEL) || 'null') || {}; } catch (_) { return {}; }
+    }
+    function savePanelState() {
+      try { safeSet(STORAGE.AI_PANEL, JSON.stringify({ open: stageEl.classList.contains('ai-open'), width: aiPanelWidth })); } catch (_) {}
+    }
+    function clampPanelWidth(px) {
+      px = Math.max(AI_PANEL_MIN, Math.min(AI_PANEL_MAX, px));
+      var stageW = stageEl.getBoundingClientRect().width;
+      if (stageW > 0) px = Math.min(px, Math.round(stageW * 0.7));   // keep the preview usable
+      return px;
+    }
+    function applyPanelWidth() { stageEl.style.setProperty('--ai-panel-w', aiPanelWidth + 'px'); }
+    function refitSoon(delay) {
+      if (diagramEl.querySelector('svg')) setTimeout(function () { fitToView(true); }, delay == null ? 340 : delay);
+    }
+
+    function openAIPanel() {
+      aiPanelWidth = clampPanelWidth(aiPanelWidth);
+      applyPanelWidth();
+      stageEl.classList.add('ai-open');
+      aiPanel.setAttribute('aria-hidden', 'false');
+      aiToggleBtn.classList.add('is-active');
+      savePanelState();
+      refitSoon();
+      setTimeout(function () { aiInput.focus(); }, 320);
+    }
+    function closeAIPanel() {
+      stageEl.classList.remove('ai-open');
+      aiPanel.setAttribute('aria-hidden', 'true');
+      aiToggleBtn.classList.remove('is-active');
+      savePanelState();
+      refitSoon();
+    }
+    function toggleAIPanel() {
+      if (stageEl.classList.contains('ai-open')) closeAIPanel(); else openAIPanel();
+    }
+
+    // Drag the AI resizer to set chat width (desktop only; vertical stack on mobile)
+    var aiResizing = false;
+    aiResizer.addEventListener('mousedown', function (e) {
+      if (!stageEl.classList.contains('ai-open') || window.innerWidth <= 900) return;
+      if (isPanning || isResizing) return;   // don't start while another drag is active
+      aiResizing = true;
+      aiResizer.classList.add('is-dragging');
+      stageEl.classList.add('ai-dragging');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!aiResizing) return;
+      var rect = stageEl.getBoundingClientRect();
+      aiPanelWidth = clampPanelWidth(rect.right - e.clientX);   // panel is docked to the stage's right edge
+      applyPanelWidth();
+    });
+    window.addEventListener('mouseup', function () {
+      if (!aiResizing) return;
+      aiResizing = false;
+      aiResizer.classList.remove('is-dragging');
+      stageEl.classList.remove('ai-dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      savePanelState();
+      refitSoon(60);
+    });
+
+    function openAISettings() {
+      var cfg = getAIConfig();
+      var provider = (cfg && cfg.provider) || 'deepseek';
+      $('ai-cfg-provider').value = provider;
+      $('ai-cfg-base').value = (cfg && cfg.baseURL) || AI_PRESETS[provider].baseURL;
+      $('ai-cfg-key').value = (cfg && cfg.apiKey) || '';
+      $('ai-cfg-model').value = (cfg && cfg.model) || AI_PRESETS[provider].model;
+      $('ai-cfg-protocol').value = (cfg && cfg.protocol) || AI_PRESETS[provider].protocol;
+      aiModalScrim.classList.add('show');
+      aiModalScrim.setAttribute('aria-hidden', 'false');
+    }
+    function closeAISettings() {
+      aiModalScrim.classList.remove('show');
+      aiModalScrim.setAttribute('aria-hidden', 'true');
+    }
+    function saveAISettings() {
+      var cfg = {
+        provider: $('ai-cfg-provider').value,
+        baseURL: $('ai-cfg-base').value.trim(),
+        apiKey: $('ai-cfg-key').value.trim(),
+        model: $('ai-cfg-model').value.trim(),
+        protocol: $('ai-cfg-protocol').value
+      };
+      if (!cfg.baseURL || !cfg.apiKey || !cfg.model) { toast('请填写地址、Key 和模型名称', 'error'); return; }
+      safeSet(STORAGE.AI_CONFIG, JSON.stringify(cfg));
+      updateModelTag();
+      closeAISettings();
+      toast('模型配置已保存', 'success');
+    }
+
+    // When provider changes in the form, prefill base/model/protocol from preset.
+    $('ai-cfg-provider').addEventListener('change', function (e) {
+      var p = AI_PRESETS[e.target.value] || AI_PRESETS.custom;
+      $('ai-cfg-base').value = p.baseURL;
+      $('ai-cfg-model').value = p.model;
+      $('ai-cfg-protocol').value = p.protocol;
+    });
+    $('ai-cfg-key-toggle').addEventListener('click', function () {
+      var inp = $('ai-cfg-key');
+      if (inp.type === 'password') { inp.type = 'text'; this.textContent = '隐藏'; }
+      else { inp.type = 'password'; this.textContent = '显示'; }
+    });
+
+    // ---------- Wire up events ----------
+    function autosizeInput() {
+      aiInput.style.height = 'auto';
+      aiInput.style.height = Math.min(180, aiInput.scrollHeight) + 'px';
+    }
+    aiInput.addEventListener('input', autosizeInput);
+    aiInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        sendAIMessage();
+      }
+    });
+    aiSendBtn.addEventListener('click', sendAIMessage);
+    aiToggleBtn.addEventListener('click', toggleAIPanel);
+    $('ai-close').addEventListener('click', closeAIPanel);
+    $('ai-settings').addEventListener('click', openAISettings);
+    aiModelTag.addEventListener('click', openAISettings);
+    $('ai-clear-chat').addEventListener('click', function () {
+      if (aiMessages.length === 0) return;
+      aiMessages = [];
+      saveChat();
+      renderChat();
+      toast('对话已清空', 'success');
+    });
+    $('ai-cfg-cancel').addEventListener('click', closeAISettings);
+    $('ai-cfg-save').addEventListener('click', saveAISettings);
+    aiModalScrim.addEventListener('click', function (e) { if (e.target === aiModalScrim) closeAISettings(); });
+
+    // Suggestion chips + apply-to-canvas buttons (event delegation)
+    aiMessagesEl.addEventListener('click', function (e) {
+      var chip = e.target.closest && e.target.closest('.ai-chip');
+      if (chip) { aiInput.value = chip.textContent; autosizeInput(); aiInput.focus(); return; }
+      var apply = e.target.closest && e.target.closest('.ai-apply');
+      if (apply) {
+        applyMermaidToCanvas(apply.getAttribute('data-code') || '');
+        toast('已应用到画布', 'success');
+      }
+    });
+
+    window.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') { e.preventDefault(); toggleAIPanel(); }
+      if (e.key === 'Escape') {
+        if (aiModalScrim.classList.contains('show')) closeAISettings();
+      }
+    });
+
+    // Re-fit the diagram if the AI panel is open when the window resizes (handled alongside global resize)
+    window.addEventListener('resize', function () {
+      if (stageEl.classList.contains('ai-open')) { aiPanelWidth = clampPanelWidth(aiPanelWidth); applyPanelWidth(); }
+    });
+
+    function initAI() {
+      loadChat();
+      renderChat();
+      updateModelTag();
+      // restore panel open/width state (default: collapsed, so non-AI users see the original 2-pane layout)
+      var st = loadPanelState();
+      if (st.width) aiPanelWidth = clampPanelWidth(st.width);
+      applyPanelWidth();
+      if (st.open) {
+        stageEl.classList.add('ai-open');
+        aiPanel.setAttribute('aria-hidden', 'false');
+        aiToggleBtn.classList.add('is-active');
+        refitSoon();
+      }
+    }
+
     // ---------- Bootstrap ----------
     function bootstrap() {
       var savedTheme = safeGet(STORAGE.THEME);
@@ -3842,6 +4896,7 @@ Expecting `+Qe.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
       autoFitOnNextRender = true;
       render(codeEl.value);
       applyTransform(false);
+      initAI();
     }
 
     var resizeTimer = null;

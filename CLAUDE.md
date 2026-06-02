@@ -72,6 +72,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 下拉菜单"**载入封神图表**"的内容来自 `fengshen-diagrams/*.mmd`。在 file:// 协议下浏览器不能列目录、也不能 fetch 兄弟文件，所以这个清单是构建时静态嵌入的，**必须跑 `build.ps1` 才能让新加的图表出现在下拉里**。
 
+## AI 助手子系统（自然语言生成图表）
+
+顶部「✦ AI 助手」按钮在右侧展开对话面板，用户用自然语言描述，调用其自配的大模型生成 Mermaid 代码，**自动填入代码区并渲染**。全部逻辑在 `template.html` 的 IIFE 内、`// AI 助手` 分隔块（紧挨 `bootstrap()` 之前），复用了现成的 `codeEl.value=...; saveDraft(); updateGutter(); autoFitOnNextRender=true; scheduleRender();` 渲染链路，以及 `toast()` / `safeGet` / `safeSet` / `STORAGE`。
+
+- **同层面板，不是悬浮抽屉。** 最初做成 `position:fixed` 滑出抽屉 + `.ai-scrim` 模糊遮罩，用户反馈"遮住后面看不清"，已改为**同层并排面板**：`<div class="stage">` 用 flex 容纳 `.workspace`（`flex:1`）+ `.ai-resizer` + `.ai-panel`（折叠时 `flex:0 0 0`，展开时 `flex-basis: var(--ai-panel-w)`，由 `.stage.ai-open` 切换）。展开/收起切 `stageEl` 的 `ai-open` 类，宽度可拖 `.ai-resizer` 调整（`width = stageRect.right - clientX`，钳在 280–720px 且 ≤70% 舞台宽），开合状态 + 宽度存 `STORAGE.AI_PANEL`。每次开合/拖动后 `refitSoon()` 重新 `fitToView`。**唯一还保留遮罩模糊的是模型设置弹窗 `.ai-modal-scrim`——那是真·模态对话框，符合预期，别去掉。** 移动端（≤900px）`.stage` 改纵向堆叠，面板变成底部一行，拖动条隐藏。
+
+要点：
+
+- **没有 .env，也不可能有。** `file://` 下浏览器读不到兄弟文件（和封神图表同样的限制）。最初需求提的 `.env` 方案行不通，改为**网页内设置弹窗 + localStorage**。配置存 `STORAGE.AI_CONFIG`，对话历史存 `STORAGE.AI_CHAT`。Key 只在本机浏览器，**绝不写文件、不进 `mermaid-studio.html`**——分享 HTML 不会泄露 Key。
+- **两种接口协议**：`openai`（`POST {baseURL}/chat/completions`，`Authorization: Bearer`）和 `claude`（`POST {baseURL}/messages`，头带 `x-api-key` + `anthropic-version` + `anthropic-dangerous-direct-browser-access: true`）。预设 `AI_PRESETS` 里 DeepSeek / OpenAI / 通义千问走 openai，Claude 走 claude。
+- **流式**：`readSSE()` 统一解析 `data:` 行；非流式（content-type 不是 event-stream）回退到整包 JSON。
+- **CORS 是硬伤**：`file://` 直连云端 API 受跨域限制，部分服务商会被浏览器拦截（不是 bug）。`corsHint()` 在失败时给出提示。README 里有详细说明和绕过方案（本地模型 / 代理 / 扩展）。
+- **生成结果强校验 + 自动修复**：模型有时会输出 PlantUML（`@startuml`/`start`/`:动作;`/`if-then-else-endif`/`note right:`）而非 Mermaid，导致 "No diagram type detected"。对策两层：①`AI_SYSTEM_PROMPT` 里加了大段硬性约束（禁 PlantUML、列出合法首行声明、给出"用户说什么→用哪种 Mermaid 图"映射）；②运行时 `validateMermaid()` 先用 `window.mermaid.parse()`（外加 `PLANTUML_MARKERS` 正则做高置信度拦截以生成更清晰的报错）校验，不过就走 `validateAndApply()` 把报错回传模型自动修复，最多 `MAX_REPAIR`(2) 次。**只有校验通过的代码才 `applyMermaidToCanvas`**；修不好则保留原图不覆盖。修复轮**在同一个 assistant 气泡里原地重写**（不要新开气泡——否则历史里出现连续 assistant 消息，Claude API 严格交替会 400）。改这块逻辑后注意保持 user/assistant 交替。
+- **改了 AI 逻辑同样要 `.\build.ps1` 重建**，并核对 README 的「AI 助手」章节是否还对得上。
+
 ## 设计系统在哪
 
 整套视觉风格（"Anthropic warm paper"：米色 `#F5F4ED` + Anthropic 橙 `#D97757` + 衬线/无衬线/等宽混排）通过 CSS 变量统一控制，全部在 `template.html` 顶部 `<style>` 块里的 `:root.theme-warm` 和 `:root.theme-dim` 两个选择器中。**改色/改字号/改圆角统一改这里的变量，不要在样式表各处分散修改。**
