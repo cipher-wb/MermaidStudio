@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 一个纯本地的单文件工具：粘贴 Mermaid 代码 → 渲染图。最终产物 `mermaid-studio.html` 通过双击在浏览器中以 `file://` 协议打开运行，完全离线，不依赖任何 CDN 或本地服务器。
 
+## ⚠️ README 是给同事看的，改动要同步
+
+`README.md` 是面向**使用者 / 同事**的文档（这个项目会分享出去给别人用）。`CLAUDE.md`（本文件）是给开发者 / Claude 看的内部说明，两者受众不同。
+
+**规则：只要改动会影响使用者的体验或使用方式，必须同步更新 `README.md`。** 包括但不限于：
+
+- 功能增删改（按钮、快捷键、导出格式、主题等）
+- 使用步骤、构建命令、添加图表的流程变化
+- 项目结构 / 文件角色变化
+- 设计风格（配色、字体）调整
+
+改完源码后顺手核对一遍 README 里对应的描述是否还对得上，对不上就改。不要让 README 与实际行为脱节——同事是照着 README 用的。
+
 ## 项目文件角色
 
 | 路径 | 角色 | 改不改 |
@@ -19,11 +32,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 工作流：改完任何上面的源就立刻重建
 
-不要等用户提示。每次修改 `template.html` 或 `fengshen-diagrams/*.mmd` 之后，立即跑：
+不要等用户提示。每次修改 `template.html` 或 `fengshen-diagrams/*.mmd` 之后，立即跑（在项目根目录）：
 
 ```powershell
-& 'F:\AI\mermaid解析\build.ps1'
+.\build.ps1
 ```
+
+> **不要写死绝对路径。** 这个项目会分享给同事、checkout 到各自机器上的不同目录。脚本全部用 `$PSScriptRoot` 自定位，文档和命令一律用相对路径（`.\build.ps1`）或 `$PSScriptRoot`，**任何文件里都不要出现 `F:\...` 这类本机绝对路径**。
 
 `build.ps1` 内部做了三件事：
 1. 读 `template.html`、`mermaid.min.js`、`fengshen-diagrams/*.mmd`
@@ -33,7 +48,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 注意：
 
-- `build.ps1` 用 `$PSScriptRoot` 自定位，可以在任何工作目录下用 `& '<full path>\build.ps1'` 调用。
+- `build.ps1` 用 `$PSScriptRoot` 自定位，可以在任何工作目录下调用（`.\build.ps1`，或从别处 `& '<本机路径>\build.ps1'`——本机路径只在临时命令里用，不要写进任何文件）。
 - 两个占位符 `/*__MERMAID_LIB_INJECTION_POINT__*/` 与 `/*__FENGSHEN_DIAGRAMS_INJECTION_POINT__*/` 必须保留在 `template.html` 的 `<script>` 标签里，删掉就构建会报错。
 - 占位符替换用 `String.Replace`（字面），不用正则——mermaid.min.js 里含有 `$`、反引号等字符，正则会误伤。
 - `.mmd` 文件首行如果是 `%% title: 自定义名称`，会用这个名字作为下拉显示文案；否则用文件名（去 `.mmd` 后缀）。
@@ -51,7 +66,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 路径里有中文
 
-工作目录是 `F:\AI\mermaid解析`，含中文字符。在 PowerShell / Bash 命令里始终用单引号包裹路径（`'F:\AI\mermaid解析\template.html'`）。
+项目所在目录可能含中文字符（每台机器不同）。在 PowerShell / Bash 命令里始终用单引号包裹路径，并优先用相对路径（`'.\template.html'`）；需要绝对路径时用 `$PSScriptRoot` 拼，**不要把任何人的本机绝对路径写进文件**。
 
 ## 添加业务图表（fengshen-diagrams/）
 
