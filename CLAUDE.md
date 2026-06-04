@@ -28,6 +28,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `fengshen-diagrams/*.mmd` | 业务图表，每个文件一张，扫描后注入到下拉菜单 | 用户随时增删改，提交 SVN |
 | `build.ps1` | 唯一的构建入口，把上面三者合成最终产物 | 改这里的逻辑要小心，团队都依赖它 |
 | `watch.ps1` | 可选 · 文件监听器，保存源文件后自动调用 `build.ps1`（防抖 400ms） | 用户自己开窗口跑，Claude 不主动启动它 |
+| `ai_config.example.js` | 团队默认 AI 接口配置**模板**（无 Key），定义 `window.AI_TEAM_DEFAULTS` | 进仓库；改字段时同步本文件与 README |
+| `ai_config.js` | 团队实际配置（**含 Key**），由同事从 example 复制填好 | **已 `.gitignore` / `svn:ignore`，绝不提交、绝不写 Key 进别处**；外置不参与 build |
 | `mermaid-studio.html` | 自包含 3.3 MB+ 单文件成品（双击运行） | **永不直接编辑**，每次都从 build.ps1 重生成 |
 
 ## 工作流：改完任何上面的源就立刻重建
@@ -80,7 +82,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 要点：
 
-- **没有 .env，也不可能有。** `file://` 下浏览器读不到兄弟文件（和封神图表同样的限制）。最初需求提的 `.env` 方案行不通，改为**网页内设置弹窗 + localStorage**。配置存 `STORAGE.AI_CONFIG`，对话历史存 `STORAGE.AI_CHAT`。Key 只在本机浏览器，**绝不写文件、不进 `mermaid-studio.html`**——分享 HTML 不会泄露 Key。
+- **每人各填：网页内设置弹窗 + localStorage。** 个人配置存 `STORAGE.AI_CONFIG`，对话历史存 `STORAGE.AI_CHAT`。Key 只在本机浏览器，**绝不写文件、不进 `mermaid-studio.html`**——分享 HTML 不会泄露 Key。
+- **没有 `.env`（fetch 读不到），但有外置 `ai_config.js`（`<script src>` 读得到）。** 这是 `file://` 的关键区别：浏览器**不能 `fetch` 兄弟文件**（所以封神图表只能 build 时内联），但 `<script src="ai_config.js">` 这种**标签式加载兄弟文件是允许的**。所以团队共享 Key 走外置脚本：`template.html` 里在 APP LOGIC 之前 `<script src="ai_config.js"></script>`，该文件定义 `window.AI_TEAM_DEFAULTS = {provider,protocol,baseURL,model,apiKey}`。
+  - **合并策略（个人优先）**：`getTeamDefaults()` 只采纳非空字段；`getAIConfig()` 返回 `Object.assign({}, team, local)` —— 个人 localStorage 配置覆盖团队默认，没填过则用团队默认。
+  - **防泄露**：`ai_config.js` 已进 `.gitignore`；svn 侧需 `svn propset svn:ignore ai_config.js .`。仓库里只留无 Key 的 `ai_config.example.js`。Key **绝不写进 `template.html` / `mermaid-studio.html` / `.example`**。
+  - **缺失即回退**：没有 `ai_config.js` 时 `window.AI_TEAM_DEFAULTS` 为 undefined，`getTeamDefaults()` 返回 null，AI 回退为「每人各填」；浏览器控制台留一条无害 404（已被全局 error handler 吞掉，不影响运行）。
+  - **外置文件不参与 build**：改 `ai_config.js` 不用重跑 `build.ps1`；但改 `template.html` 里的 `<script src>` 标签或合并逻辑后照例重建。
 - **两种接口协议**：`openai`（`POST {baseURL}/chat/completions`，`Authorization: Bearer`）和 `claude`（`POST {baseURL}/messages`，头带 `x-api-key` + `anthropic-version` + `anthropic-dangerous-direct-browser-access: true`）。预设 `AI_PRESETS` 里 DeepSeek / OpenAI / 通义千问走 openai，Claude 走 claude。
 - **流式**：`readSSE()` 统一解析 `data:` 行；非流式（content-type 不是 event-stream）回退到整包 JSON。
 - **CORS 是硬伤**：`file://` 直连云端 API 受跨域限制，部分服务商会被浏览器拦截（不是 bug）。`corsHint()` 在失败时给出提示。README 里有详细说明和绕过方案（本地模型 / 代理 / 扩展）。
@@ -91,7 +98,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 整套视觉风格（"Anthropic warm paper"：米色 `#F5F4ED` + Anthropic 橙 `#D97757` + 衬线/无衬线/等宽混排）通过 CSS 变量统一控制，全部在 `template.html` 顶部 `<style>` 块里的 `:root.theme-warm` 和 `:root.theme-dim` 两个选择器中。**改色/改字号/改圆角统一改这里的变量，不要在样式表各处分散修改。**
 
-mermaid 自身的图表配色在 JS 中的 `buildMermaidConfig()` 函数里（`themeVariables` 对象），分 warm 和 dim 两套；与上面的 CSS 变量需要同步调整。
+mermaid 自身的图表配色在 JS 中的 `buildMermaidConfig()` 函数里（`themeVariables` 对象）；与上面的 CSS 变量需要同步调整。
+
+## 图表样式子系统（配色 / 连线 / 字体 / 方向 + AI 风格）
+
+顶栏「🎨 样式」浮层 + AI 面板的「出图风格」下拉，全部在 `template.html`。两类样式：
+
+**视觉样式（即时、对任意图生效）** —— 都汇入 `buildMermaidConfig()`：
+- **配色解耦**：原来 warm/dim 两套 `themeVariables` 被抽成 `WARM_NEUTRAL`/`DIM_NEUTRAL`（**与明暗强相关的中性量**：文字/背景/标签底色/危急红，**原值逐字保留**）+ `PALETTES`（`warm/blue/green/gray/candy`，每套含 `light`/`dim` 的**颜色身份**覆盖，由 `mkPalette(锚点)` + `hexA(hex,a)` 展开）。`buildThemeVariables(isDim,key)=Object.assign({},中性量, 配色覆盖)`。**`PALETTES.warm={light:{},dim:{}}` 是空覆盖 → 默认观感零回归**，这是不能破坏的不变量。加新配色就往 `PALETTES` 加一项 + `PALETTE_SWATCH`/`PALETTE_NAMES`/`PALETTE_ORDER`。
+- **连线/字体**：`base.flowchart.curve = currentCurve`、`base.fontFamily = FONT_STACKS[currentFont]`。
+- **字体的坑**：`.diagram text{...!important}` 会盖掉 mermaid 的 fontFamily，所以那条 CSS 改成 `var(--diagram-font,...)`，切字体时 JS `documentElement.style.setProperty('--diagram-font', ...)`，**两处缺一不可**。
+- **方向**：不是配置项，存在代码首行。`setDirection()` 用正则改写 `graph/flowchart` 首行的方向 token，**只对 flowchart 生效**。
+- 状态 `currentPalette/currentCurve/currentFont/currentDir` + `STORAGE.PALETTE/CURVE/FONT/DIRECTION`，bootstrap 里**在 initMermaid 之前**载入。改动走 `applyVisualStyle()`（`autoFitOnNextRender=false` 保持缩放，再 `initMermaid()+render()`，照搬 `setTheme()` 的套路）。
+
+**AI 出图风格（只影响生成的代码结构）**：`AI_STYLE_PRESETS{plain/accent/rounded/blueprint}` → `effectiveSystemPrompt()` 拼到 `AI_SYSTEM_PROMPT` 末尾。`callOpenAI/callClaude` 加了第 4 参 `systemPrompt`（流式/非流式两条分支都要用到），`validateAndApply` 加第 6 参并透传给修复轮（修复保持同风格），`sendAIMessage` 算一次 `effectiveSystemPrompt()` 传下去。`STORAGE.AI_STYLE` 持久化、`initAI` 恢复。
+
+改这块后照例 `.\build.ps1` 重建，并核对 README 的「图表样式」与「AI 助手」两节。
 
 ## 不存在的东西
 

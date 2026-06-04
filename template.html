@@ -472,12 +472,13 @@
   :root.theme-dim .diagram svg {
     filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.35));
   }
-  /* Mermaid text overrides (keep diagram text consistent with our serif/sans choice) */
+  /* Mermaid text overrides — driven by --diagram-font so the 字体 selector can change diagram text.
+     (Without this var, the !important here would always beat mermaid's fontFamily setting.) */
   .diagram text,
   .diagram .nodeLabel,
   .diagram .edgeLabel,
   .diagram .label foreignObject div {
-    font-family: var(--font-sans) !important;
+    font-family: var(--diagram-font, var(--font-sans)) !important;
   }
 
   /* Expand-code floating tab */
@@ -969,7 +970,9 @@
   .ai-model-tag:hover { color: var(--accent); }
   .ai-model-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-mute); flex-shrink: 0; }
   .ai-model-tag.ready .dot { background: var(--success); }
-  .ai-send-row { display: flex; align-items: center; gap: 6px; }
+  .ai-send-row { display: flex; align-items: center; gap: 8px; }
+  .ai-style-wrap select.tk-select { font-size: 11.5px; padding: 6px 26px 6px 10px; }
+  .ai-style-wrap::after { right: 10px; }
   #ai-send { padding: 7px 18px; }
   #ai-send:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
@@ -1069,6 +1072,67 @@
   .ai-modal-foot .note { font-size: 11px; color: var(--ink-4); line-height: 1.5; flex: 1; }
   .ai-modal-foot .btns { display: flex; gap: 8px; flex-shrink: 0; }
 
+  /* ============ STYLE MENU (palette / curve / font / direction) ============ */
+  .style-menu { position: relative; display: inline-flex; }
+  .style-pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    width: 246px;
+    background: var(--bg-paper);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 13px 15px;
+    display: none;
+    flex-direction: column;
+    gap: 13px;
+  }
+  .style-pop.open { display: flex; }
+  .style-row { display: flex; flex-direction: column; gap: 7px; }
+  .style-label {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .style-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    padding: 0;
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  .swatch:hover { transform: translateY(-1px); }
+  .swatch.active { border-color: var(--ink-1); }
+  .swatch:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    align-self: flex-start;
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 12px;
+    padding: 6px 11px;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: background .12s ease, color .12s ease;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: var(--bg-deep); }
+  .seg button.active { background: var(--accent); color: #FFFFFF; }
+
   /* On narrow screens the stage stacks vertically: chat docks below as a row, no width-resizer. */
   @media (max-width: 900px) {
     .stage { flex-direction: column; }
@@ -1120,11 +1184,46 @@
             <option value="mindmap">思维导图 · mindmap</option>
             <option value="timeline">时间线 · timeline</option>
             <option value="quadrant">象限图 · quadrant</option>
+            <option value="styled">样式演示 · 上色/形状/分组</option>
           </select>
         </div>
         <button class="btn-icon" id="toggle-code" title="收起 / 展开代码区 (Ctrl+B)" aria-label="收起代码区">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
         </button>
+        <div class="style-menu" id="style-menu">
+          <button class="btn-icon" id="style-toggle" title="图表样式（配色 / 连线 / 字体 / 方向）" aria-label="图表样式">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 22a10 10 0 1 1 0-20 8 8 0 0 1 8 8 4 4 0 0 1-4 4h-2.5a1.5 1.5 0 0 0-1 2.6 1.5 1.5 0 0 1-1 2.6z"/></svg>
+          </button>
+          <div class="style-pop" id="style-pop" aria-hidden="true">
+            <div class="style-row">
+              <span class="style-label">配色方案</span>
+              <div class="style-swatches" id="style-swatches"></div>
+            </div>
+            <div class="style-row">
+              <span class="style-label">连线</span>
+              <div class="seg" id="seg-curve">
+                <button type="button" data-v="basis">圆润</button>
+                <button type="button" data-v="step">直角</button>
+                <button type="button" data-v="linear">直线</button>
+              </div>
+            </div>
+            <div class="style-row">
+              <span class="style-label">方向（流程图）</span>
+              <div class="seg" id="seg-dir">
+                <button type="button" data-v="TD">竖排 ↓</button>
+                <button type="button" data-v="LR">横排 →</button>
+              </div>
+            </div>
+            <div class="style-row">
+              <span class="style-label">字体</span>
+              <div class="seg" id="seg-font">
+                <button type="button" data-v="sans">无衬线</button>
+                <button type="button" data-v="serif">衬线</button>
+                <button type="button" data-v="mono">等宽</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <button class="btn-icon" id="theme-toggle" title="切换深浅" aria-label="切换主题">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
@@ -1230,6 +1329,14 @@
           <div class="ai-compose-bar">
             <span class="ai-model-tag" id="ai-model-tag" title="点击配置模型"><span class="dot"></span><span id="ai-model-text">未配置模型</span></span>
             <div class="ai-send-row">
+              <div class="select-wrap ai-style-wrap">
+                <select id="ai-style-select" class="tk-select" title="AI 出图风格" aria-label="AI 出图风格">
+                  <option value="plain">简洁</option>
+                  <option value="accent">彩色强调</option>
+                  <option value="rounded">圆角柔和</option>
+                  <option value="blueprint">分组蓝图</option>
+                </select>
+              </div>
               <button class="btn-primary" id="ai-send" title="发送 (Enter)">生成</button>
             </div>
           </div>
@@ -1320,6 +1427,13 @@
   /*__FENGSHEN_DIAGRAMS_INJECTION_POINT__*/
   </script>
 
+  <!-- ========== 团队默认 AI 接口配置（含 API Key）==========
+       此文件【不进仓库、已被 .gitignore / svn:ignore】，由每个团队自行从
+       ai_config.example.js 复制为 ai_config.js 并填好 Key。缺失时下面的 AI 助手
+       自动回退为「每人在 ⚙ 设置里各填各的」，不影响使用，仅在控制台留一条 404。
+       注意：Key 绝不写进 template.html / mermaid-studio.html —— 那两个文件会进仓库 / 分享出去。 -->
+  <script src="ai_config.js"></script>
+
   <!-- ========== APP LOGIC ========== -->
   <script>
   (function () {
@@ -1367,7 +1481,12 @@
       COLLAPSED: 'mermaid-studio.collapsed.v1',
       AI_CONFIG: 'mermaid-studio.ai.config.v1',
       AI_CHAT: 'mermaid-studio.ai.chat.v1',
-      AI_PANEL: 'mermaid-studio.ai.panel.v1'
+      AI_PANEL: 'mermaid-studio.ai.panel.v1',
+      PALETTE: 'mermaid-studio.palette.v1',
+      CURVE: 'mermaid-studio.curve.v1',
+      FONT: 'mermaid-studio.font.v1',
+      DIRECTION: 'mermaid-studio.direction.v1',
+      AI_STYLE: 'mermaid-studio.ai.style.v1'
     };
 
     function safeGet(key) { try { return localStorage.getItem(key); } catch (_) { return null; } }
@@ -1548,170 +1667,199 @@
 '    "Bug 修复": [0.85, 0.7]\n' +
 '    "性能优化": [0.3, 0.8]\n' +
 '    "文档更新": [0.2, 0.4]\n' +
-'    "客服回复": [0.9, 0.3]'
+'    "客服回复": [0.9, 0.3]',
+
+      styled:
+'graph TD\n' +
+'    %% 样式演示：classDef 上色、:::类、多种节点形状、subgraph 分组\n' +
+'    classDef begin fill:#7D9C68,stroke:#3D5A2E,color:#fff\n' +
+'    classDef danger fill:#B85450,stroke:#7A2E2A,color:#fff\n' +
+'    classDef done fill:#5D8A8F,stroke:#33575A,color:#fff\n' +
+'\n' +
+'    A([开始]):::begin --> B[/输入订单/]\n' +
+'    B --> C{库存充足?}\n' +
+'    C -- 是 --> D[(扣减库存)]\n' +
+'    C -- 否 --> E[提示缺货]:::danger\n' +
+'    E --> B\n' +
+'    subgraph 履约\n' +
+'      D --> F[[生成发货单]]\n' +
+'      F --> G((完成)):::done\n' +
+'    end\n' +
+'    linkStyle 1 stroke:#7D9C68,stroke-width:2px'
     };
 
-    // ---------- Mermaid config (Anthropic warm palette) ----------
+    // ---------- Mermaid config: palettes (color identity) layered over light/dim neutrals ----------
+    // 视觉样式状态（bootstrap 时从 localStorage 读取并应用）
+    var currentPalette = 'warm', currentCurve = 'basis', currentFont = 'sans', currentDir = 'TD';
+
+    function hexA(hex, a) {
+      hex = String(hex).replace('#', '');
+      if (hex.length === 3) hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) + hex.charAt(2) + hex.charAt(2);
+      var n = parseInt(hex, 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+    }
+
+    // 与明暗强相关的中性量（文字/背景/标签底色/红色危急色等），任何配色下都复用以保证对比度
+    var DIM_NEUTRAL = {
+      background: 'transparent',
+      primaryColor: '#2F2D2A', primaryTextColor: '#F5F4ED', primaryBorderColor: '#E89F7E',
+      secondaryColor: '#3A3733', tertiaryColor: '#1F1E1C',
+      mainBkg: '#2F2D2A', secondBkg: '#3A3733', tertiaryBkg: '#1F1E1C',
+      lineColor: '#B8B2A0', textColor: '#F5F4ED', nodeBorder: '#E89F7E',
+      edgeLabelBackground: '#262624',
+      clusterBkg: 'rgba(232,159,126,0.1)', clusterBorder: 'rgba(232,159,126,0.45)',
+      titleColor: '#F5F4ED',
+      actorBkg: '#3A3733', actorBorder: '#E89F7E', actorTextColor: '#F5F4ED', actorLineColor: '#B8B2A0',
+      signalColor: '#F5F4ED', signalTextColor: '#F5F4ED',
+      labelBoxBkgColor: '#3A3733', labelBoxBorderColor: '#E89F7E', labelTextColor: '#F5F4ED', loopTextColor: '#F5F4ED',
+      noteBkgColor: '#4A3F33', noteBorderColor: '#E89F7E', noteTextColor: '#F5F4ED',
+      activationBkgColor: '#E89F7E', activationBorderColor: '#E89F7E',
+      sectionBkgColor: 'rgba(232,159,126,0.14)', altSectionBkgColor: 'rgba(157,179,135,0.1)', sectionBkgColor2: 'rgba(232,159,126,0.2)',
+      taskBkgColor: '#E89F7E', taskTextColor: '#262624', taskTextLightColor: '#262624', taskTextDarkColor: '#F5F4ED', taskTextOutsideColor: '#F5F4ED', taskBorderColor: '#E89F7E',
+      activeTaskBkgColor: '#F2B097', activeTaskBorderColor: '#F5F4ED',
+      gridColor: 'rgba(245,244,237,0.1)', doneTaskBkgColor: 'rgba(184,178,160,0.5)', doneTaskBorderColor: '#B8B2A0',
+      critBkgColor: '#D77E7A', critBorderColor: '#D77E7A', todayLineColor: '#E89F7E',
+      pie1: '#E89F7E', pie2: '#9DB387', pie3: '#DEB46F', pie4: '#A98BC8',
+      pie5: '#7AAFBA', pie6: '#D77E7A', pie7: '#C9B894', pie8: '#8FA59E',
+      pie9: '#BB94A7', pie10: '#E8B86F', pie11: '#9C8FBA', pie12: '#B5C99A',
+      pieTitleTextColor: '#F5F4ED', pieSectionTextColor: '#262624', pieLegendTextColor: '#F5F4ED',
+      pieStrokeColor: '#262624', pieOuterStrokeColor: 'transparent', pieOuterStrokeWidth: '0',
+      git0: '#E89F7E', git1: '#9DB387', git2: '#A98BC8', git3: '#DEB46F',
+      gitBranchLabel0: '#262624', gitBranchLabel1: '#262624', gitInv0: '#262624',
+      commitLabelColor: '#F5F4ED', commitLabelBackground: 'transparent',
+      fillType0: 'rgba(232,159,126,0.3)', fillType1: 'rgba(157,179,135,0.3)', fillType2: 'rgba(222,180,111,0.3)',
+      fillType3: 'rgba(169,139,200,0.3)', fillType4: 'rgba(122,175,186,0.3)', fillType5: 'rgba(215,126,122,0.3)'
+    };
+    var WARM_NEUTRAL = {
+      background: 'transparent',
+      primaryColor: '#FAF9F2', primaryTextColor: '#2A2620', primaryBorderColor: '#2A2620',
+      secondaryColor: '#EFEDE3', tertiaryColor: '#E8E4D6',
+      mainBkg: '#FAF9F2', secondBkg: '#EFEDE3', tertiaryBkg: '#E8E4D6',
+      lineColor: '#6E6754', textColor: '#2A2620', nodeBorder: '#2A2620',
+      edgeLabelBackground: '#F5F4ED',
+      clusterBkg: 'rgba(217,119,87,0.06)', clusterBorder: 'rgba(217,119,87,0.4)',
+      titleColor: '#2A2620',
+      actorBkg: '#FAF9F2', actorBorder: '#2A2620', actorTextColor: '#2A2620', actorLineColor: '#6E6754',
+      signalColor: '#2A2620', signalTextColor: '#2A2620',
+      labelBoxBkgColor: '#FAF9F2', labelBoxBorderColor: '#D97757', labelTextColor: '#2A2620', loopTextColor: '#2A2620',
+      noteBkgColor: '#FDF2EA', noteBorderColor: '#D97757', noteTextColor: '#2A2620',
+      activationBkgColor: '#D97757', activationBorderColor: '#D97757',
+      sectionBkgColor: 'rgba(217,119,87,0.1)', altSectionBkgColor: 'rgba(125,156,104,0.08)', sectionBkgColor2: 'rgba(217,119,87,0.18)',
+      taskBkgColor: '#D97757', taskTextColor: '#FFFFFF', taskTextLightColor: '#FFFFFF', taskTextDarkColor: '#2A2620', taskTextOutsideColor: '#2A2620', taskBorderColor: '#2A2620',
+      activeTaskBkgColor: '#C76747', activeTaskBorderColor: '#2A2620',
+      gridColor: 'rgba(42,38,32,0.1)', doneTaskBkgColor: 'rgba(110,103,84,0.4)', doneTaskBorderColor: '#6E6754',
+      critBkgColor: '#B85450', critBorderColor: '#B85450', todayLineColor: '#D97757',
+      pie1: '#D97757', pie2: '#7D9C68', pie3: '#A8946F', pie4: '#8B6F9C',
+      pie5: '#5D8A8F', pie6: '#B85450', pie7: '#9C8568', pie8: '#6F8773',
+      pie9: '#9C6F8B', pie10: '#D4A056', pie11: '#7C7BAA', pie12: '#8FA565',
+      pieTitleTextColor: '#2A2620', pieSectionTextColor: '#FFFFFF', pieLegendTextColor: '#2A2620',
+      pieStrokeColor: '#F5F4ED', pieOuterStrokeColor: 'transparent', pieOuterStrokeWidth: '0',
+      git0: '#D97757', git1: '#7D9C68', git2: '#8B6F9C', git3: '#D4A056',
+      gitBranchLabel0: '#FFFFFF', gitBranchLabel1: '#FFFFFF', gitInv0: '#FFFFFF',
+      commitLabelColor: '#2A2620', commitLabelBackground: 'transparent',
+      fillType0: 'rgba(217,119,87,0.25)', fillType1: 'rgba(125,156,104,0.25)', fillType2: 'rgba(212,160,86,0.25)',
+      fillType3: 'rgba(139,111,156,0.25)', fillType4: 'rgba(93,138,143,0.25)', fillType5: 'rgba(184,84,80,0.25)'
+    };
+
+    // 由少量"锚点色"展开成一套配色覆盖（只覆盖颜色身份，文字/背景等仍取中性量）
+    function mkPalette(a) {
+      var p = a.pie, g = a.git;
+      return {
+        primaryColor: a.node, mainBkg: a.node, actorBkg: a.node, labelBoxBkgColor: a.node,
+        secondaryColor: a.node2, secondBkg: a.node2, tertiaryColor: a.node3, tertiaryBkg: a.node3,
+        primaryBorderColor: a.border, nodeBorder: a.border, actorBorder: a.border,
+        lineColor: a.line, actorLineColor: a.line, doneTaskBorderColor: a.line,
+        labelBoxBorderColor: a.accent, noteBorderColor: a.accent, noteBkgColor: a.noteBkg,
+        clusterBkg: hexA(a.accent, 0.08), clusterBorder: hexA(a.accent, 0.42),
+        activationBkgColor: a.accent, activationBorderColor: a.accentDeep,
+        sectionBkgColor: hexA(a.accent, 0.12), sectionBkgColor2: hexA(a.accent, 0.20), altSectionBkgColor: hexA(a.accent, 0.05),
+        taskBkgColor: a.accent, taskBorderColor: a.accentDeep, taskTextColor: a.onAccent, taskTextLightColor: a.onAccent,
+        activeTaskBkgColor: a.accentDeep, activeTaskBorderColor: a.accentDeep, todayLineColor: a.accent,
+        pie1: p[0], pie2: p[1], pie3: p[2], pie4: p[3], pie5: p[4], pie6: p[5],
+        pie7: p[6], pie8: p[7], pie9: p[8], pie10: p[9], pie11: p[10], pie12: p[11],
+        git0: g[0], git1: g[1], git2: g[2], git3: g[3],
+        fillType0: hexA(p[0], 0.28), fillType1: hexA(p[1], 0.28), fillType2: hexA(p[2], 0.28),
+        fillType3: hexA(p[3], 0.28), fillType4: hexA(p[4], 0.28), fillType5: hexA(p[5], 0.28)
+      };
+    }
+
+    var PALETTES = {
+      // warm = 默认，沿用现有 warm/dim 中性量本身，不做任何覆盖 → 观感零回归
+      warm: { light: {}, dim: {} },
+      blue: {
+        light: mkPalette({ node: '#EAF2FB', node2: '#DCE9F7', node3: '#CFE0F2', border: '#2B5C8A', line: '#5A7FA3',
+          accent: '#3A78B5', accentDeep: '#2B5C8A', onAccent: '#FFFFFF', noteBkg: '#E3EEFA',
+          pie: ['#3A78B5', '#5BA3C7', '#7DBE9A', '#E0B15A', '#C2756B', '#8E7CB8', '#5C8FA8', '#A0B05E', '#C98AA6', '#6FB0C4', '#9A86C2', '#83B79A'],
+          git: ['#3A78B5', '#5BA3C7', '#8E7CB8', '#E0B15A'] }),
+        dim: mkPalette({ node: '#26303B', node2: '#2E3A47', node3: '#1E2731', border: '#7FB2DE', line: '#9DB6CE',
+          accent: '#6FA8DC', accentDeep: '#8FC0E8', onAccent: '#1A2129', noteBkg: '#2A3947',
+          pie: ['#6FA8DC', '#7FC2D8', '#9AD2B0', '#E8C887', '#D79A90', '#AE9FD0', '#86AFC4', '#BCC783', '#DCA7C0', '#92C6D6', '#B3A2D6', '#A3CDB4'],
+          git: ['#6FA8DC', '#7FC2D8', '#AE9FD0', '#E8C887'] })
+      },
+      green: {
+        light: mkPalette({ node: '#EAF4EC', node2: '#DCEDE0', node3: '#CFE6D4', border: '#2F6B43', line: '#5E8C6A',
+          accent: '#3E8E5A', accentDeep: '#2F6B43', onAccent: '#FFFFFF', noteBkg: '#E4F1E7',
+          pie: ['#3E8E5A', '#6FAE7D', '#A8B85E', '#E0B15A', '#C2756B', '#5C9A8E', '#8E9C5A', '#7CB890', '#C9A86B', '#6FA0C4', '#9CB07E', '#B5C99A'],
+          git: ['#3E8E5A', '#6FAE7D', '#5C9A8E', '#E0B15A'] }),
+        dim: mkPalette({ node: '#243029', node2: '#2C3A30', node3: '#1C2620', border: '#7FCB97', line: '#9DC2A8',
+          accent: '#6FBE8A', accentDeep: '#8FD6A6', onAccent: '#19211C', noteBkg: '#28392E',
+          pie: ['#6FBE8A', '#92CFA0', '#C2CE86', '#E8C887', '#D79A90', '#86C0B2', '#B0BC86', '#A0D2B0', '#E0C290', '#92BCD6', '#BCC79E', '#A3CDB4'],
+          git: ['#6FBE8A', '#92CFA0', '#86C0B2', '#E8C887'] })
+      },
+      gray: {
+        light: mkPalette({ node: '#EEEDEA', node2: '#E4E2DD', node3: '#D9D7D1', border: '#6E6A63', line: '#8C8780',
+          accent: '#8A8178', accentDeep: '#6E6A63', onAccent: '#FFFFFF', noteBkg: '#ECEAE6',
+          pie: ['#8A8178', '#9CA199', '#A8968C', '#9A9DAA', '#B0A39A', '#8E9A95', '#A99FA6', '#969C8E', '#B2A78F', '#8F9AA2', '#A29A8E', '#9DA694'],
+          git: ['#8A8178', '#9CA199', '#9A9DAA', '#A8968C'] }),
+        dim: mkPalette({ node: '#2B2A28', node2: '#33322F', node3: '#211F1D', border: '#A8A39A', line: '#B8B2A8',
+          accent: '#A39A8E', accentDeep: '#BCB3A6', onAccent: '#1E1D1B', noteBkg: '#33312D',
+          pie: ['#A39A8E', '#B0B5AD', '#BCAAA0', '#AEB1BE', '#C4B7AE', '#A2AEA9', '#BDB3BA', '#AAB0A2', '#C6BBA3', '#A3AEB6', '#B6AEA2', '#B1BAA8'],
+          git: ['#A39A8E', '#B0B5AD', '#AEB1BE', '#BCAAA0'] })
+      },
+      candy: {
+        light: mkPalette({ node: '#FDEEF4', node2: '#FCE6EE', node3: '#FBDDE8', border: '#C96A93', line: '#C98AA6',
+          accent: '#E26FA0', accentDeep: '#C96A93', onAccent: '#FFFFFF', noteBkg: '#FDE8F0',
+          pie: ['#E26FA0', '#F2A35C', '#F2D45C', '#7FC8A0', '#5CB5D6', '#A78BE0', '#F07E7E', '#6FD0C2', '#E0A0D0', '#8FD06F', '#C0A0F0', '#F0B86F'],
+          git: ['#E26FA0', '#5CB5D6', '#7FC8A0', '#F2A35C'] }),
+        dim: mkPalette({ node: '#3A2A33', node2: '#43303B', node3: '#2E222A', border: '#F0A0C2', line: '#E0A8C0',
+          accent: '#F08FB5', accentDeep: '#F7B0CC', onAccent: '#2A1D24', noteBkg: '#43303B',
+          pie: ['#F08FB5', '#F7BC85', '#F5DE8A', '#9AD9B6', '#86CFE6', '#C0AAEE', '#F5A0A0', '#92E0D4', '#ECBAE0', '#AEE092', '#D2BAF7', '#F7CE97'],
+          git: ['#F08FB5', '#86CFE6', '#9AD9B6', '#F7BC85'] })
+      }
+    };
+
+    // 顶栏样式面板里显示的代表色
+    var PALETTE_SWATCH = { warm: '#D97757', blue: '#3A78B5', green: '#3E8E5A', gray: '#8A8178', candy: '#E26FA0' };
+
+    var FONT_STACKS = {
+      sans:  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif",
+      serif: "'Source Serif Pro', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', Georgia, 'Times New Roman', serif",
+      mono:  "'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Consolas, 'Courier New', monospace"
+    };
+
+    function buildThemeVariables(isDim, key) {
+      var neutral = isDim ? DIM_NEUTRAL : WARM_NEUTRAL;
+      var pal = PALETTES[key] || PALETTES.warm;
+      return Object.assign({}, neutral, pal[isDim ? 'dim' : 'light'] || {});
+    }
+
     function buildMermaidConfig() {
       var isDim = document.documentElement.classList.contains('theme-dim');
       var base = {
         startOnLoad: false,
         securityLevel: 'loose',
         theme: 'base',
-        fontFamily: "'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+        fontFamily: FONT_STACKS[currentFont] || FONT_STACKS.sans,
         // htmlLabels:false → 节点文字用原生 SVG <text> 而非 <foreignObject>。
         // foreignObject 会污染(taint) canvas，导致 PNG 导出时 toBlob 返回 null（“生成 PNG 失败”）。
-        flowchart: { useMaxWidth: false, htmlLabels: false, curve: 'basis', padding: 18 },
+        flowchart: { useMaxWidth: false, htmlLabels: false, curve: currentCurve || 'basis', padding: 18 },
         sequence: { useMaxWidth: false, mirrorActors: false, showSequenceNumbers: false, actorMargin: 60 },
         gantt: { useMaxWidth: false, leftPadding: 80 },
         er: { useMaxWidth: false },
         journey: { useMaxWidth: false },
         mindmap: { useMaxWidth: false, padding: 14 }
       };
-
-      if (isDim) {
-        base.themeVariables = {
-          background: 'transparent',
-          primaryColor: '#2F2D2A',
-          primaryTextColor: '#F5F4ED',
-          primaryBorderColor: '#E89F7E',
-          secondaryColor: '#3A3733',
-          tertiaryColor: '#1F1E1C',
-          mainBkg: '#2F2D2A',
-          secondBkg: '#3A3733',
-          tertiaryBkg: '#1F1E1C',
-          lineColor: '#B8B2A0',
-          textColor: '#F5F4ED',
-          nodeBorder: '#E89F7E',
-          edgeLabelBackground: '#262624',
-          clusterBkg: 'rgba(232,159,126,0.1)',
-          clusterBorder: 'rgba(232,159,126,0.45)',
-          titleColor: '#F5F4ED',
-          actorBkg: '#3A3733',
-          actorBorder: '#E89F7E',
-          actorTextColor: '#F5F4ED',
-          actorLineColor: '#B8B2A0',
-          signalColor: '#F5F4ED',
-          signalTextColor: '#F5F4ED',
-          labelBoxBkgColor: '#3A3733',
-          labelBoxBorderColor: '#E89F7E',
-          labelTextColor: '#F5F4ED',
-          loopTextColor: '#F5F4ED',
-          noteBkgColor: '#4A3F33',
-          noteBorderColor: '#E89F7E',
-          noteTextColor: '#F5F4ED',
-          activationBkgColor: '#E89F7E',
-          activationBorderColor: '#E89F7E',
-          sectionBkgColor: 'rgba(232,159,126,0.14)',
-          altSectionBkgColor: 'rgba(157,179,135,0.1)',
-          sectionBkgColor2: 'rgba(232,159,126,0.2)',
-          taskBkgColor: '#E89F7E',
-          taskTextColor: '#262624',
-          taskTextLightColor: '#262624',
-          taskTextDarkColor: '#F5F4ED',
-          taskTextOutsideColor: '#F5F4ED',
-          taskBorderColor: '#E89F7E',
-          activeTaskBkgColor: '#F2B097',
-          activeTaskBorderColor: '#F5F4ED',
-          gridColor: 'rgba(245,244,237,0.1)',
-          doneTaskBkgColor: 'rgba(184,178,160,0.5)',
-          doneTaskBorderColor: '#B8B2A0',
-          critBkgColor: '#D77E7A',
-          critBorderColor: '#D77E7A',
-          todayLineColor: '#E89F7E',
-          pie1: '#E89F7E', pie2: '#9DB387', pie3: '#DEB46F', pie4: '#A98BC8',
-          pie5: '#7AAFBA', pie6: '#D77E7A', pie7: '#C9B894', pie8: '#8FA59E',
-          pie9: '#BB94A7', pie10: '#E8B86F', pie11: '#9C8FBA', pie12: '#B5C99A',
-          pieTitleTextColor: '#F5F4ED',
-          pieSectionTextColor: '#262624',
-          pieLegendTextColor: '#F5F4ED',
-          pieStrokeColor: '#262624',
-          pieOuterStrokeColor: 'transparent',
-          pieOuterStrokeWidth: '0',
-          git0: '#E89F7E', git1: '#9DB387', git2: '#A98BC8', git3: '#DEB46F',
-          gitBranchLabel0: '#262624', gitBranchLabel1: '#262624',
-          gitInv0: '#262624',
-          commitLabelColor: '#F5F4ED',
-          commitLabelBackground: 'transparent',
-          fillType0: 'rgba(232,159,126,0.3)',
-          fillType1: 'rgba(157,179,135,0.3)',
-          fillType2: 'rgba(222,180,111,0.3)',
-          fillType3: 'rgba(169,139,200,0.3)',
-          fillType4: 'rgba(122,175,186,0.3)',
-          fillType5: 'rgba(215,126,122,0.3)'
-        };
-      } else {
-        base.themeVariables = {
-          background: 'transparent',
-          primaryColor: '#FAF9F2',
-          primaryTextColor: '#2A2620',
-          primaryBorderColor: '#2A2620',
-          secondaryColor: '#EFEDE3',
-          tertiaryColor: '#E8E4D6',
-          mainBkg: '#FAF9F2',
-          secondBkg: '#EFEDE3',
-          tertiaryBkg: '#E8E4D6',
-          lineColor: '#6E6754',
-          textColor: '#2A2620',
-          nodeBorder: '#2A2620',
-          edgeLabelBackground: '#F5F4ED',
-          clusterBkg: 'rgba(217,119,87,0.06)',
-          clusterBorder: 'rgba(217,119,87,0.4)',
-          titleColor: '#2A2620',
-          actorBkg: '#FAF9F2',
-          actorBorder: '#2A2620',
-          actorTextColor: '#2A2620',
-          actorLineColor: '#6E6754',
-          signalColor: '#2A2620',
-          signalTextColor: '#2A2620',
-          labelBoxBkgColor: '#FAF9F2',
-          labelBoxBorderColor: '#D97757',
-          labelTextColor: '#2A2620',
-          loopTextColor: '#2A2620',
-          noteBkgColor: '#FDF2EA',
-          noteBorderColor: '#D97757',
-          noteTextColor: '#2A2620',
-          activationBkgColor: '#D97757',
-          activationBorderColor: '#D97757',
-          sectionBkgColor: 'rgba(217,119,87,0.1)',
-          altSectionBkgColor: 'rgba(125,156,104,0.08)',
-          sectionBkgColor2: 'rgba(217,119,87,0.18)',
-          taskBkgColor: '#D97757',
-          taskTextColor: '#FFFFFF',
-          taskTextLightColor: '#FFFFFF',
-          taskTextDarkColor: '#2A2620',
-          taskTextOutsideColor: '#2A2620',
-          taskBorderColor: '#2A2620',
-          activeTaskBkgColor: '#C76747',
-          activeTaskBorderColor: '#2A2620',
-          gridColor: 'rgba(42,38,32,0.1)',
-          doneTaskBkgColor: 'rgba(110,103,84,0.4)',
-          doneTaskBorderColor: '#6E6754',
-          critBkgColor: '#B85450',
-          critBorderColor: '#B85450',
-          todayLineColor: '#D97757',
-          pie1: '#D97757', pie2: '#7D9C68', pie3: '#A8946F', pie4: '#8B6F9C',
-          pie5: '#5D8A8F', pie6: '#B85450', pie7: '#9C8568', pie8: '#6F8773',
-          pie9: '#9C6F8B', pie10: '#D4A056', pie11: '#7C7BAA', pie12: '#8FA565',
-          pieTitleTextColor: '#2A2620',
-          pieSectionTextColor: '#FFFFFF',
-          pieLegendTextColor: '#2A2620',
-          pieStrokeColor: '#F5F4ED',
-          pieOuterStrokeColor: 'transparent',
-          pieOuterStrokeWidth: '0',
-          git0: '#D97757', git1: '#7D9C68', git2: '#8B6F9C', git3: '#D4A056',
-          gitBranchLabel0: '#FFFFFF', gitBranchLabel1: '#FFFFFF',
-          gitInv0: '#FFFFFF',
-          commitLabelColor: '#2A2620',
-          commitLabelBackground: 'transparent',
-          fillType0: 'rgba(217,119,87,0.25)',
-          fillType1: 'rgba(125,156,104,0.25)',
-          fillType2: 'rgba(212,160,86,0.25)',
-          fillType3: 'rgba(139,111,156,0.25)',
-          fillType4: 'rgba(93,138,143,0.25)',
-          fillType5: 'rgba(184,84,80,0.25)'
-        };
-      }
+      base.themeVariables = buildThemeVariables(isDim, currentPalette);
       return base;
     }
 
@@ -2087,6 +2235,115 @@
       setTheme(cur === 'dim' ? 'warm' : 'dim');
     });
 
+    // ---------- Visual style (palette / curve / font / direction) ----------
+    var CURVE_KEYS = { basis: 1, linear: 1, step: 1 };   // must match the 连线 buttons in the style popover
+    var FONT_KEYS = { sans: 1, serif: 1, mono: 1 };
+
+    // Re-init mermaid with current style and re-render, keeping the current zoom/pan.
+    function applyVisualStyle() {
+      document.documentElement.style.setProperty('--diagram-font', FONT_STACKS[currentFont] || FONT_STACKS.sans);
+      initMermaid();
+      if (codeEl.value.trim()) {
+        autoFitOnNextRender = false;
+        render(codeEl.value);
+      }
+    }
+
+    function setPalette(key) {
+      if (!PALETTES[key]) return;
+      currentPalette = key; safeSet(STORAGE.PALETTE, key); applyVisualStyle();
+    }
+    function setCurve(key) {
+      if (!CURVE_KEYS[key]) return;
+      currentCurve = key; safeSet(STORAGE.CURVE, key); applyVisualStyle();
+    }
+    function setFont(key) {
+      if (!FONT_KEYS[key]) return;
+      currentFont = key; safeSet(STORAGE.FONT, key); applyVisualStyle();
+    }
+
+    // Direction lives in the diagram code's first line (flowchart only). Rewrite that token in place.
+    function setDirection(dir) {
+      if (dir !== 'TD' && dir !== 'LR') return;
+      currentDir = dir; safeSet(STORAGE.DIRECTION, dir);
+      var code = codeEl.value || '';
+      var re = /^(\s*(?:graph|flowchart)\s+)(TB|TD|BT|RL|LR)\b/;
+      if (re.test(code)) {
+        codeEl.value = code.replace(re, '$1' + dir);
+        saveDraft(); updateGutter();
+        autoFitOnNextRender = true;
+        scheduleRender();
+      } else if (code.trim()) {
+        toast('当前图不是流程图，方向设置仅对 graph/flowchart 生效', 'error');
+      }
+    }
+
+    // Style popover UI
+    var PALETTE_NAMES = { warm: '暖橙（默认）', blue: '静谧蓝', green: '森林绿', gray: '莫兰迪灰', candy: '糖果粉彩' };
+    var PALETTE_ORDER = ['warm', 'blue', 'green', 'gray', 'candy'];
+
+    function buildSwatches() {
+      var box = $('style-swatches');
+      if (!box || box.childElementCount) return;
+      PALETTE_ORDER.forEach(function (key) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'swatch';
+        b.style.background = PALETTE_SWATCH[key] || '#999999';
+        b.title = PALETTE_NAMES[key] || key;
+        b.setAttribute('data-v', key);
+        b.setAttribute('aria-label', PALETTE_NAMES[key] || key);
+        box.appendChild(b);
+      });
+    }
+    function syncSeg(id, val) {
+      var seg = $(id);
+      if (!seg) return;
+      Array.prototype.forEach.call(seg.querySelectorAll('button'), function (b) {
+        b.classList.toggle('active', b.getAttribute('data-v') === val);
+      });
+    }
+    function syncStyleControls() {
+      buildSwatches();
+      var box = $('style-swatches');
+      if (box) Array.prototype.forEach.call(box.children, function (b) {
+        b.classList.toggle('active', b.getAttribute('data-v') === currentPalette);
+      });
+      syncSeg('seg-curve', currentCurve);
+      syncSeg('seg-dir', currentDir);
+      syncSeg('seg-font', currentFont);
+    }
+
+    (function wireStyleMenu() {
+      var toggle = $('style-toggle'), pop = $('style-pop');
+      if (!toggle || !pop) return;
+      function closePop() { pop.classList.remove('open'); toggle.classList.remove('is-active'); }
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = pop.classList.toggle('open');
+        toggle.classList.toggle('is-active', open);
+        if (open) syncStyleControls();
+      });
+      pop.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.addEventListener('click', closePop);
+      window.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePop(); });
+      $('style-swatches').addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('.swatch');
+        if (!b) return;
+        setPalette(b.getAttribute('data-v')); syncStyleControls();
+      });
+      function segHandler(setter) {
+        return function (e) {
+          var b = e.target.closest && e.target.closest('button');
+          if (!b) return;
+          setter(b.getAttribute('data-v')); syncStyleControls();
+        };
+      }
+      $('seg-curve').addEventListener('click', segHandler(setCurve));
+      $('seg-dir').addEventListener('click', segHandler(setDirection));
+      $('seg-font').addEventListener('click', segHandler(setFont));
+    })();
+
     // ---------- Collapse code panel ----------
     function applySavedLayout() {
       var savedLayout = safeGet(STORAGE.LAYOUT);
@@ -2288,6 +2545,26 @@
       '7. 确保语法严谨可直接渲染：箭头方向正确、引号闭合、缩进一致、节点 ID 用字母/数字（中文放到 [] 标签里）。\n' +
       '8. 输出前在心里默渲染一遍，确认这是能被 Mermaid v10.9.1 解析的代码，再给出。';
 
+    // AI 出图风格预设（每次发送时拼到 system prompt 末尾）
+    var currentAIStyle = 'accent';
+    var AI_STYLE_PRESETS = {
+      plain:     { name: '简洁',     guide: '保持简洁：结构清晰即可，不要额外的颜色或花哨形状。' },
+      accent:    { name: '彩色强调', guide: '用 classDef 给关键节点分类上色，并用 class 或 :::className 应用——例如开始/结束用强调色、判断(菱形)用警示色、失败/异常用红色系、成功用绿色系；颜色雅致克制，只做语义强调，不要给所有节点都铺满重色。' },
+      rounded:   { name: '圆角柔和', guide: '节点尽量用圆角矩形 ( ) 或体育场形 ([ ])，整体柔和；可配合 classDef 给关键节点浅色填充。' },
+      blueprint: { name: '分组蓝图', guide: '用 subgraph 把相关节点分组并起清晰的组名；同类节点形状保持一致；可用 linkStyle / classDef 区分主流程与支线。' }
+    };
+    var AI_STYLE_ORDER = ['plain', 'accent', 'rounded', 'blueprint'];
+
+    function effectiveSystemPrompt() {
+      var preset = AI_STYLE_PRESETS[currentAIStyle] || AI_STYLE_PRESETS.plain;
+      var dirHint = currentDir === 'LR'
+        ? '若是流程图，方向用从左到右（graph LR）。'
+        : '若是流程图，方向用自上而下（graph TD）。';
+      return AI_SYSTEM_PROMPT +
+        '\n\n【本次出图风格要求】\n' + preset.guide + '\n' + dirHint +
+        '\n注意：上色以语义强调为主，不要写死会与全局配色主题冲突的整体背景色，classDef 颜色要协调耐看。';
+    }
+
     var stageEl = $('stage');
     var aiPanel = $('ai-panel');
     var aiResizer = $('ai-resizer');
@@ -2302,8 +2579,26 @@
     var aiMessages = [];     // [{role:'user'|'assistant', content:'...'}]
     var aiBusy = false;
 
+    // 团队默认接口配置：来自外置 ai_config.js 注入的 window.AI_TEAM_DEFAULTS（可缺失）。
+    // 只采纳「真正填了值」的字段，空值/缺失不参与，避免清空内置回退。
+    function getTeamDefaults() {
+      var src = (typeof window !== 'undefined' && window.AI_TEAM_DEFAULTS) || null;
+      if (!src) return null;
+      var out = {};
+      ['provider', 'protocol', 'baseURL', 'apiKey', 'model'].forEach(function (k) {
+        var v = src[k];
+        if (v !== '' && v !== undefined && v !== null) out[k] = v;
+      });
+      return Object.keys(out).length ? out : null;
+    }
+    // 合并策略：团队默认作底，个人 localStorage 设置覆盖（个人优先）。
+    // 个人 saveAISettings 写入的配置是完整的，一旦存在即整体生效；没填过则用团队默认。
     function getAIConfig() {
-      try { return JSON.parse(safeGet(STORAGE.AI_CONFIG) || 'null') || null; } catch (_) { return null; }
+      var local = null;
+      try { local = JSON.parse(safeGet(STORAGE.AI_CONFIG) || 'null') || null; } catch (_) { local = null; }
+      var team = getTeamDefaults();
+      if (!local && !team) return null;
+      return Object.assign({}, team || {}, local || {});
     }
     function isConfigReady(cfg) {
       return !!(cfg && cfg.baseURL && cfg.apiKey && cfg.model && cfg.protocol);
@@ -2462,10 +2757,10 @@
       return pump();
     }
 
-    function callOpenAI(cfg, apiMessages, onDelta) {
+    function callOpenAI(cfg, apiMessages, onDelta, systemPrompt) {
       var body = {
         model: cfg.model,
-        messages: [{ role: 'system', content: AI_SYSTEM_PROMPT }].concat(apiMessages),
+        messages: [{ role: 'system', content: systemPrompt || AI_SYSTEM_PROMPT }].concat(apiMessages),
         stream: true,
         temperature: 0.3
       };
@@ -2489,11 +2784,11 @@
       });
     }
 
-    function callClaude(cfg, apiMessages, onDelta) {
+    function callClaude(cfg, apiMessages, onDelta, systemPrompt) {
       var body = {
         model: cfg.model,
         max_tokens: 4096,
-        system: AI_SYSTEM_PROMPT,
+        system: systemPrompt || AI_SYSTEM_PROMPT,
         messages: apiMessages,
         stream: true
       };
@@ -2586,7 +2881,7 @@
 
     // Recursively validate → if invalid, ask the model to repair, up to MAX_REPAIR rounds.
     // Only valid code is ever pushed to the canvas.
-    function validateAndApply(code, msgIdx, cfg, baseApiMessages, attempt) {
+    function validateAndApply(code, msgIdx, cfg, baseApiMessages, attempt, systemPrompt) {
       return validateMermaid(code).then(function (res) {
         if (res.ok) {
           applyMermaidToCanvas(code);
@@ -2614,10 +2909,10 @@
         return caller(cfg, repairMsgs, function (delta) {
           aiMessages[msgIdx].content += delta;
           updateStreamingBody(msgIdx, true);
-        }).then(function () {
+        }, systemPrompt).then(function () {
           updateStreamingBody(msgIdx, false);
           var newCode = extractMermaid(aiMessages[msgIdx].content);
-          return validateAndApply(newCode || code, msgIdx, cfg, baseApiMessages, attempt + 1);
+          return validateAndApply(newCode || code, msgIdx, cfg, baseApiMessages, attempt + 1, systemPrompt);
         });
       });
     }
@@ -2640,13 +2935,14 @@
       setAIBusy(true);
       setStatus('pending', 'AI 生成中…');
 
+      var sysPrompt = effectiveSystemPrompt();
       var caller = cfg.protocol === 'claude' ? callClaude : callOpenAI;
       var gotAny = false;
       caller(cfg, apiMessages, function (delta) {
         gotAny = true;
         aiMessages[asstIdx].content += delta;
         updateStreamingBody(asstIdx, true);
-      }).then(function () {
+      }, sysPrompt).then(function () {
         updateStreamingBody(asstIdx, false);
         if (!gotAny && !aiMessages[asstIdx].content) {
           aiMessages[asstIdx].content = '（没有收到模型返回的内容，请检查模型名称或接口协议是否正确。）';
@@ -2655,7 +2951,7 @@
         }
         var code = extractMermaid(aiMessages[asstIdx].content);
         if (!code) { toast('未在回复中找到 Mermaid 代码', 'error'); return; }
-        return validateAndApply(code, asstIdx, cfg, apiMessages, 0);
+        return validateAndApply(code, asstIdx, cfg, apiMessages, 0, sysPrompt);
       }).catch(function (err) {
         aiMessages[asstIdx].content += (aiMessages[asstIdx].content ? '\n\n' : '') + '⚠️ 调用失败：' + ((err && err.message) || err) + corsHint(err);
         updateStreamingBody(asstIdx, false);
@@ -2798,6 +3094,9 @@
     $('ai-close').addEventListener('click', closeAIPanel);
     $('ai-settings').addEventListener('click', openAISettings);
     aiModelTag.addEventListener('click', openAISettings);
+    $('ai-style-select').addEventListener('change', function (e) {
+      if (AI_STYLE_PRESETS[e.target.value]) { currentAIStyle = e.target.value; safeSet(STORAGE.AI_STYLE, currentAIStyle); }
+    });
     $('ai-clear-chat').addEventListener('click', function () {
       if (aiMessages.length === 0) return;
       aiMessages = [];
@@ -2836,6 +3135,11 @@
       loadChat();
       renderChat();
       updateModelTag();
+      // restore AI 出图风格
+      var savedStyle = safeGet(STORAGE.AI_STYLE);
+      if (savedStyle && AI_STYLE_PRESETS[savedStyle]) currentAIStyle = savedStyle;
+      var styleSel = $('ai-style-select');
+      if (styleSel) styleSel.value = currentAIStyle;
       // restore panel open/width state (default: collapsed, so non-AI users see the original 2-pane layout)
       var st = loadPanelState();
       if (st.width) aiPanelWidth = clampPanelWidth(st.width);
@@ -2856,6 +3160,14 @@
         document.documentElement.classList.add('theme-dim');
       }
       if (safeGet(STORAGE.COLLAPSED) === '1') setCollapsed(true, true);
+
+      // restore visual style prefs before first init/render
+      var sp = safeGet(STORAGE.PALETTE); if (sp && PALETTES[sp]) currentPalette = sp;
+      var sc = safeGet(STORAGE.CURVE); if (sc && CURVE_KEYS[sc]) currentCurve = sc;
+      var sf = safeGet(STORAGE.FONT); if (sf && FONT_KEYS[sf]) currentFont = sf;
+      var sd = safeGet(STORAGE.DIRECTION); if (sd === 'TD' || sd === 'LR') currentDir = sd;
+      document.documentElement.style.setProperty('--diagram-font', FONT_STACKS[currentFont] || FONT_STACKS.sans);
+      syncStyleControls();
 
       if (!initMermaid()) {
         showError(new Error('Mermaid 库未能初始化。如果你打开的是空白 HTML，可能是文件不完整。'));
